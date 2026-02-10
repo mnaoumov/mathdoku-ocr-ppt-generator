@@ -1,3 +1,5 @@
 *.pptx
 __pycache__
 *.pptm
+*.yaml
+!samples/*.yaml
