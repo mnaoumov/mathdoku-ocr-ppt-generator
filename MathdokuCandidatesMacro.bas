@@ -323,13 +323,20 @@ Public Sub EnterFinalValue()
     currentValue = ""
     If valueShp.HasTextFrame Then currentValue = Trim$(valueShp.TextFrame.TextRange.Text)
 
-    Dim inputVal As String
+    Dim inputVal As Variant
     inputVal = InputBox("Final value for cell " & cellRef & " (1-" & sz & "):", "Mathdoku", currentValue)
-    If Len(inputVal) = 0 Then Exit Sub ' cancel/empty -> no-op
+    If StrPtr(inputVal) = 0 Then Exit Sub ' Cancel pressed -> no-op
 
     Dim d As String
-    d = DigitsOnly(inputVal)
-    If Len(d) = 0 Then Exit Sub
+    d = DigitsOnly(CStr(inputVal))
+
+    ' Empty or non-digit input -> clear the value
+    If Len(d) = 0 Then
+        Application.StartNewUndoEntry
+        valueShp.TextFrame.TextRange.Text = " "
+        ApplyValueStyle valueShp, valueFontName, valueFontSize, valueFontColor, valueBold
+        Exit Sub
+    End If
 
     Dim v As Long
     v = CLng(Left$(d, 1))
@@ -380,15 +387,22 @@ Public Sub EditCellCandidates()
     sz = GetGridSizeFromSlide(sld)
     If sz <= 0 Then Exit Sub
 
-    Dim candShp As Shape
+    Dim candShp As Shape, valueShp As Shape
     Dim cellRef As String
     cellRef = CellRefA1(r, c)
     Set candShp = GetShapeByName(sld, "CANDIDATES_" & cellRef)
+    Set valueShp = GetShapeByName(sld, "VALUE_" & cellRef)
 
     Dim candFontName As String, candFontSize As Single, candFontColor As Long
     candFontName = candShp.TextFrame.TextRange.Font.Name
     candFontSize = candShp.TextFrame.TextRange.Font.Size
     candFontColor = candShp.TextFrame.TextRange.Font.Color.RGB
+
+    Dim valueFontName As String, valueFontSize As Single, valueFontColor As Long, valueBold As MsoTriState
+    valueFontName = valueShp.TextFrame.TextRange.Font.Name
+    valueFontSize = valueShp.TextFrame.TextRange.Font.Size
+    valueFontColor = valueShp.TextFrame.TextRange.Font.Color.RGB
+    valueBold = valueShp.TextFrame.TextRange.Font.Bold
 
     Dim currentDigits As String
     currentDigits = NormalizeCandidatesDigits(candShp.TextFrame.TextRange.Text, sz)
@@ -408,6 +422,10 @@ Public Sub EditCellCandidates()
         candShp.TextFrame.TextRange.Text = FormatLikeApp(normalized, sz)
     End If
     ApplyCandidatesStyle candShp, candFontName, candFontSize, candFontColor
+
+    ' Clear the final value when setting candidates
+    valueShp.TextFrame.TextRange.Text = " "
+    ApplyValueStyle valueShp, valueFontName, valueFontSize, valueFontColor, valueBold
 
     Exit Sub
 
