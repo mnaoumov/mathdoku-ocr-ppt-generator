@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(python:*)",
-      "Read(//f/**)"
+      "Read(//f/**)",
+      "Bash(cd:*)"
     ]
   }
 }

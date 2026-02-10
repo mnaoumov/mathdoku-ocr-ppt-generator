@@ -43,9 +43,8 @@ End Sub
 '
 ' Requirements (works with the PPTX created by your generator):
 '   - Each cell has shapes named:
-'       VALUE_A1         (full-cell textbox)
+'       VALUE_A1         (full-cell textbox for the final value)
 '       CANDIDATES_A1    (candidates textbox for the same cell)
-'       CELL_A1          (click/tab hitbox for the cell)
 '   - Required hidden metadata shape named `MATHDOKU_META` with a line `size: N`
 '
 ' Note: PowerPoint can't auto-format on every keystroke without an add-in.

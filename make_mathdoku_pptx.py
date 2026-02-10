@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import re
 import sys
-import zipfile
 from dataclasses import dataclass
-from io import BytesIO
 from pathlib import Path
 
 import yaml
@@ -52,7 +50,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_label_w": 0.30,
         "axis_top_offset": 0.42,
         "axis_side_offset": 0.36,
-        "value_font": 52,
+        "value": {"y_frac": 0.30, "h_frac": 0.70, "font": 52},
         "candidates": {"x_frac": 0.15, "y_frac": 0.38, "w_frac": 0.80, "h_frac": 0.60, "font": 22},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.35, "font": 28},
         "solve": {"enabled": True, "left_in": 6.20, "cols": 3, "col_w_in": 2.10, "col_gap_in": 0.25, "font": 16},
@@ -71,7 +69,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_label_w": 0.32,
         "axis_top_offset": 0.45,
         "axis_side_offset": 0.38,
-        "value_font": 44,
+        "value": {"y_frac": 0.28, "h_frac": 0.72, "font": 44},
         "candidates": {"x_frac": 0.05, "y_frac": 0.36, "w_frac": 0.88, "h_frac": 0.62, "font": 18},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.33, "font": 24},
         "solve": {"enabled": True, "left_in": 6.55, "cols": 3, "col_w_in": 2.00, "col_gap_in": 0.25, "font": 16},
@@ -90,7 +88,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_label_w": 0.28,
         "axis_top_offset": 0.41,
         "axis_side_offset": 0.34,
-        "value_font": 38,
+        "value": {"y_frac": 0.25, "h_frac": 0.75, "font": 38},
         "candidates": {"x_frac": 0.07, "y_frac": 0.33, "w_frac": 0.86, "h_frac": 0.65, "font": 15},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.30, "font": 22},
         "solve": {"enabled": True, "left_in": 6.85, "cols": 3, "col_w_in": 1.90, "col_gap_in": 0.25, "font": 16},
@@ -109,7 +107,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_label_w": 0.35,
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
-        "value_font": 32,
+        "value": {"y_frac": 0.23, "h_frac": 0.77, "font": 32},
         "candidates": {"x_frac": 0.08, "y_frac": 0.31, "w_frac": 0.84, "h_frac": 0.67, "font": 12},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.28, "font": 20},
         "solve": {"enabled": True, "left_in": 7.05, "cols": 3, "col_w_in": 1.85, "col_gap_in": 0.25, "font": 16},
@@ -128,7 +126,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_label_w": 0.35,
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
-        "value_font": 30,
+        "value": {"y_frac": 0.22, "h_frac": 0.78, "font": 30},
         "candidates": {"x_frac": 0.08, "y_frac": 0.29, "w_frac": 0.84, "h_frac": 0.69, "font": 10},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.26, "font": 18},
         "solve": {"enabled": True, "left_in": 7.15, "cols": 3, "col_w_in": 1.80, "col_gap_in": 0.25, "font": 16},
@@ -147,7 +145,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_label_w": 0.35,
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
-        "value_font": 28,
+        "value": {"y_frac": 0.20, "h_frac": 0.80, "font": 28},
         "candidates": {"x_frac": 0.09, "y_frac": 0.27, "w_frac": 0.88, "h_frac": 0.71, "font": 7},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.70, "box_h_frac": 0.24, "font": 16},
         "solve": {"enabled": True, "left_in": 7.25, "cols": 3, "col_w_in": 1.75, "col_gap_in": 0.25, "font": 16},
@@ -334,7 +332,6 @@ def _add_cell_value_box(slide, *, left: float, top: float, size: float, name: st
     p.alignment = PP_ALIGN.CENTER
     _font(p.runs[0], size=font_size, bold=True, rgb=VALUE_GRAY)
 
-    # Keep accessible to VBA. Prevent accidental movement.
     _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=False)
 
 
@@ -370,15 +367,6 @@ def _add_cell_candidates_box(
     _font(p.runs[0], name="Consolas", size=font_size, bold=False, rgb=rgb)
 
     _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=False)
-
-
-def _add_cell_hitbox(slide, *, left: float, top: float, size: float, name: str) -> None:
-    box = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, Inches(left), Inches(top), Inches(size), Inches(size))
-    box.name = name
-    # No fill/no line: still clickable/selectable, but never obscures cell content.
-    box.fill.background()
-    box.line.fill.background()
-    _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=True)
 
 
 def _op_symbol(op: str) -> str:
@@ -683,50 +671,6 @@ def cages_from_yaml(spec: dict) -> tuple[int, list[Cage], str, str, bool, str, s
     return n, cages, title, meta, operations, puzzle_id, out_in_yaml
 
 
-_CUSTOM_UI_XML = b"""\
-<?xml version="1.0" encoding="UTF-8"?>
-<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
-  <ribbon>
-    <qat>
-      <documentControls>
-        <button id="btnEnterValue" label="Enter Value"
-                onAction="RibbonEnterFinalValue"
-                supertip="Enter final value for selected cell"/>
-        <button id="btnEditCandidates" label="Edit Candidates"
-                onAction="RibbonEditCellCandidates"
-                supertip="Edit candidates for selected cell"/>
-      </documentControls>
-    </qat>
-  </ribbon>
-</customUI>
-"""
-
-
-def _inject_ribbon_xml(pptm_path: Path) -> None:
-    """Embed Ribbon XML into a .pptm to add document-level QAT buttons."""
-    buf = BytesIO(pptm_path.read_bytes())
-    out = BytesIO()
-    with zipfile.ZipFile(buf, "r") as zin, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
-        for item in zin.infolist():
-            data = zin.read(item.filename)
-            if item.filename == "[Content_Types].xml":
-                data = data.replace(
-                    b"</Types>",
-                    b'<Override PartName="/customUI/customUI14.xml"'
-                    b' ContentType="application/xml"/>\n</Types>',
-                )
-            elif item.filename == "_rels/.rels":
-                data = data.replace(
-                    b"</Relationships>",
-                    b'<Relationship Id="rCustomUI"'
-                    b' Type="http://schemas.microsoft.com/office/2007/relationships/ui/extensibility"'
-                    b' Target="customUI/customUI14.xml"/>\n</Relationships>',
-                )
-            zout.writestr(item, data)
-        zout.writestr("customUI/customUI14.xml", _CUSTOM_UI_XML)
-    pptm_path.write_bytes(out.getvalue())
-
-
 def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     (
         n,
@@ -839,9 +783,7 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     if missing:
         raise ValueError(f"Spec missing {len(missing)} cell(s): {missing}")
 
-    # Create cell content + hitboxes
-    # Keep references to hitboxes so we can bring them above borders/labels later
-    cell_hitboxes = []
+    # Create cell content (VALUE + CANDIDATES per cell)
     for r in range(n):
         for c in range(n):
             cell_left = grid_left + c * cell_w
@@ -858,8 +800,6 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
                 font_size=cand_font,
                 rgb=cand_rgb,
             )
-            _add_cell_hitbox(slide, left=cell_left, top=cell_top, size=cell_w, name=f"CELL_{cell_ref}")
-            cell_hitboxes.append((r, c, slide.shapes[-1]))
 
     # Borders
     v_bound, h_bound = _compute_boundaries(cell_to_cage=cell_to_cage, n=n)
@@ -939,20 +879,8 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
             _font(p.runs[0], size=int(solve_prof["font"]), bold=False, rgb=VALUE_GRAY)
             _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=False)
 
-    # Bring hitboxes to front so clicks/Tab hit cells, but do it in a stable
-    # row-major order to keep navigation predictable.
-    for _r, _c, shp in sorted(cell_hitboxes, key=lambda t: (t[0], t[1])):
-        try:
-            shp.zorder(0)  # msoBringToFront
-        except Exception:
-            pass
-
     out_path.parent.mkdir(parents=True, exist_ok=True)
     prs.save(out_path)
-
-    if has_vba and out_path.suffix.lower() == ".pptm":
-        _inject_ribbon_xml(out_path)
-
     return out_path
 
 
