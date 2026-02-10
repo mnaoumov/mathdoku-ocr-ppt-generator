@@ -634,9 +634,17 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     cand_font = int(ui["cand_font"]) if ui["cand_font"] is not None else (16 if n <= 4 else 11)
     cand_rgb: RGBColor = ui["cand_rgb"]
 
-    cand_pad_x = min(0.10, cell_w * 0.14)
-    cand_top_y = min(0.22, cell_w * 0.28)
-    cand_h = min(0.40, cell_w * 0.45)
+    # Candidates box placement (inspired by the app screenshots):
+    # - consistent top-left placement across all cells
+    # - sits *under* the cage label region
+    inset_y = min(0.04, cell_w * 0.10)
+    label_region_h = min(0.34, cell_w * 0.30)
+    label_gap = min(0.03, cell_w * 0.06)
+
+    cand_left = min(0.08, cell_w * 0.10)
+    cand_top = inset_y + label_region_h + label_gap
+    cand_w = min(cell_w * 0.78, cell_w - 2 * cand_left)
+    cand_h = min(0.45, cell_w * 0.42)
 
     # Validate coverage/non-overlap
     all_cells = {(r, c) for r in range(n) for c in range(n)}
@@ -661,9 +669,9 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
             _add_cell_value_box(slide, left=cell_left, top=cell_top, size=cell_w, name=f"VALUE_{cell_ref}", font_size=value_font)
             _add_cell_candidates_box(
                 slide,
-                left=cell_left + cand_pad_x,
-                top=cell_top + cand_top_y,
-                width=cell_w - 2 * cand_pad_x,
+                left=cell_left + cand_left,
+                top=cell_top + cand_top,
+                width=cand_w,
                 height=cand_h,
                 name=f"CANDIDATES_{cell_ref}",
                 font_size=cand_font,
