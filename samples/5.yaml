@@ -1,0 +1,27 @@
+id: 5
+size: 5
+difficulty: 5
+operations: true
+cages:
+  - cells: [A1, B1]
+    value: 2
+    op: "-"
+  - cells: [C1, D1, E1, D2]
+    value: 9
+    op: +
+  - cells: [A2, B2, C2, A3, C3, D3]
+    value: 288
+    op: x
+  - cells: [E2, E3, E4, D5, E5]
+    value: 18
+    op: +
+  - cells: [B3, B4, C4]
+    value: 50
+    op: x
+  - cells: [A4, A5, B5]
+    value: 4
+    op: x
+  - cells: [D4]
+    value: 3
+  - cells: [C5]
+    value: 2

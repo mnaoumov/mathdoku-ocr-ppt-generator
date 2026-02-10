@@ -1,0 +1,19 @@
+id: 4
+size: 4
+difficulty: 5
+operations: true
+cages:
+  - cells: [A1, B1, A2, A3, A4, B4]
+    value: 14
+    op: +
+  - cells: [C1, D1, D2]
+    value: 7
+    op: +
+  - cells: [B2, C2, B3, C3]
+    value: 11
+    op: +
+  - cells: [D3, D4]
+    value: 12
+    op: x
+  - cells: [C4]
+    value: 1
