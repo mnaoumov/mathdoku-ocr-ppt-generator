@@ -694,15 +694,65 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
 
     prof = _profile(n)
 
+    # Use VBA template if available -> produce .pptm; otherwise plain .pptx
+    project_dir = Path(__file__).resolve().parent
+    vba_template = project_dir / "vba_template.pptm"
+    bas_file = project_dir / "MathdokuCandidatesMacro.bas"
+
+    # Auto-regenerate template when .bas is newer than .pptm (or .pptm missing)
+    if bas_file.is_file():
+        need_regen = not vba_template.is_file() or (
+            bas_file.stat().st_mtime > vba_template.stat().st_mtime
+        )
+        if need_regen:
+            print("VBA template needs regeneration (bas file is newer or template missing)...")
+            import subprocess
+            result = subprocess.run(
+                [sys.executable, str(project_dir / "create_vba_template.py")],
+                capture_output=True, text=True,
+            )
+            if result.returncode != 0:
+                stderr = result.stderr.strip()
+                msg = (
+                    "\n"
+                    "ERROR: Failed to regenerate VBA template (vba_template.pptm).\n"
+                )
+                if "not trusted" in stderr.lower() or "VBProject" in stderr:
+                    msg += (
+                        "\n"
+                        "  PowerPoint blocks programmatic VBA access by default.\n"
+                        "  To fix this, open PowerPoint and enable the setting:\n"
+                        "\n"
+                        "    File > Options > Trust Center > Trust Center Settings >\n"
+                        "    Macro Settings > check \"Trust access to the VBA project object model\"\n"
+                        "\n"
+                        "  Then re-run this script.\n"
+                    )
+                else:
+                    msg += f"\n  {stderr}\n"
+                msg += (
+                    "\n"
+                    "  Falling back to plain .pptx (no embedded macro).\n"
+                )
+                print(msg, file=sys.stderr)
+            else:
+                print("VBA template regenerated successfully.")
+
+    has_vba = vba_template.is_file()
+    out_suffix = ".pptm" if has_vba else ".pptx"
+
     out_path = None
     if out_in_yaml:
         out_path = Path(str(out_in_yaml))
         if not out_path.is_absolute():
             out_path = (spec_path.parent / out_path).resolve()
     else:
-        out_path = spec_path.with_suffix(".pptx")
+        out_path = spec_path.with_suffix(out_suffix)
 
-    prs = Presentation()
+    if has_vba:
+        prs = Presentation(str(vba_template))
+    else:
+        prs = Presentation()
     _set_slide_size(prs)
     slide = prs.slides.add_slide(prs.slide_layouts[6])
 
