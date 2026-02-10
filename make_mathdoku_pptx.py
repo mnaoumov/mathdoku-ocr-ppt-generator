@@ -229,12 +229,8 @@ def _add_cell_candidates_box(
 def _add_cell_hitbox(slide, *, left: float, top: float, size: float, name: str) -> None:
     box = slide.shapes.add_shape(MSO_AUTO_SHAPE_TYPE.RECTANGLE, Inches(left), Inches(top), Inches(size), Inches(size))
     box.name = name
-    box.fill.solid()
-    box.fill.fore_color.rgb = RGBColor(255, 255, 255)
-    try:
-        box.fill.transparency = 1.0
-    except Exception:
-        pass
+    # No fill/no line: still clickable/selectable, but never obscures cell content.
+    box.fill.background()
     box.line.fill.background()
     _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=True)
 
@@ -655,22 +651,26 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
         raise ValueError(f"Spec missing {len(missing)} cell(s): {missing}")
 
     # Create cell content + hitboxes
+    # Keep references to hitboxes so we can bring them above borders/labels later
+    cell_hitboxes = []
     for r in range(n):
         for c in range(n):
             cell_left = grid_left + c * cell_w
             cell_top = grid_top + r * cell_w
-            _add_cell_value_box(slide, left=cell_left, top=cell_top, size=cell_w, name=f"VALUE_r{r+1}c{c+1}", font_size=value_font)
+            cell_ref = f"{chr(ord('A') + c)}{r+1}"
+            _add_cell_value_box(slide, left=cell_left, top=cell_top, size=cell_w, name=f"VALUE_{cell_ref}", font_size=value_font)
             _add_cell_candidates_box(
                 slide,
                 left=cell_left + cand_pad_x,
                 top=cell_top + cand_top_y,
                 width=cell_w - 2 * cand_pad_x,
                 height=cand_h,
-                name=f"CANDIDATES_r{r+1}c{c+1}",
+                name=f"CANDIDATES_{cell_ref}",
                 font_size=cand_font,
                 rgb=cand_rgb,
             )
-            _add_cell_hitbox(slide, left=cell_left, top=cell_top, size=cell_w, name=f"CELL_r{r+1}c{c+1}")
+            _add_cell_hitbox(slide, left=cell_left, top=cell_top, size=cell_w, name=f"CELL_{cell_ref}")
+            cell_hitboxes.append((r, c, slide.shapes[-1]))
 
     # Axis labels
     _add_axis_labels(slide, grid_left=grid_left, grid_top=grid_top, cell_w=cell_w, n=n)
@@ -744,14 +744,13 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
             _font(p.runs[0], size=16, bold=False, rgb=VALUE_GRAY)
             _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=False)
 
-    # Bring hitboxes to front so clicks always select a cell.
-    for sh in list(slide.shapes):
-        nm = getattr(sh, "name", "") or ""
-        if nm.startswith("CELL_r"):
-            try:
-                sh.zorder(0)  # msoBringToFront
-            except Exception:
-                pass
+    # Bring hitboxes to front so clicks/Tab hit cells, but do it in a stable
+    # row-major order to keep navigation predictable.
+    for _r, _c, shp in sorted(cell_hitboxes, key=lambda t: (t[0], t[1])):
+        try:
+            shp.zorder(0)  # msoBringToFront
+        except Exception:
+            pass
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     prs.save(out_path)
