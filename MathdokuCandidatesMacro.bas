@@ -1,6 +1,8 @@
 Attribute VB_Name = "MathdokuCandidates"
 Option Explicit
 
+Private Const TOOLBAR_NAME As String = "Mathdoku"
+
 ' No "hidden" error handlers: unexpected errors show details.
 Private Sub ShowError(ByVal procName As String)
     MsgBox "Error in " & procName & vbCrLf & _
@@ -31,12 +33,19 @@ End Sub
 
 ' Import into PowerPoint VBA:
 '   Alt+F11 -> File -> Import File... -> select this .bas
-' Then add these two macros to the Quick Access Toolbar:
-'   - EnterFinalValue
-'   - EditCellCandidates
+'
+' Keyboard access (two options):
+'   A) Floating toolbar (auto-created on file open):
+'      - "Enter Value" and "Edit Candidates" buttons appear automatically
+'      - Run SetupToolbar manually if the toolbar is missing
+'   B) Quick Access Toolbar (true hotkeys):
+'      - Right-click QAT > Customize Quick Access Toolbar
+'      - Choose "Macros" from the dropdown
+'      - Add EnterFinalValue and EditCellCandidates
+'      - They become Alt+1, Alt+2, etc. (based on position)
 '
 ' What it does:
-'   - Lets you solve directly on the slide using hotkeys:
+'   - Lets you solve directly on the slide:
 '       1) Select a cell (click it or Tab to it)
 '       2) EnterFinalValue -> prompt -> sets value, clears candidates, removes that value
 '          from candidates in the same row and column (one undo step)
@@ -50,7 +59,7 @@ End Sub
 '       CELL_A1          (click/tab hitbox for the cell)
 '   - Required hidden metadata shape named `MATHDOKU_META` with a line `size: N`
 '
-' Note: PowerPoint can’t auto-format on every keystroke without an add-in.
+' Note: PowerPoint can't auto-format on every keystroke without an add-in.
 ' This is designed as: type freely -> press the hotkey.
 
 Private Function GetGridSizeFromSlide(ByVal sld As Slide) As Long
@@ -416,5 +425,43 @@ Public Sub EditCellCandidates()
 
 ErrHandler:
     ShowError "EditCellCandidates"
+End Sub
+
+' ---------------------------------------------------------------------------
+' Floating toolbar
+' ---------------------------------------------------------------------------
+
+Public Sub SetupToolbar()
+    On Error GoTo ErrHandler
+    RemoveToolbar
+
+    Dim cb As CommandBar
+    Set cb = Application.CommandBars.Add(Name:=TOOLBAR_NAME, Position:=msoBarFloating, Temporary:=True)
+
+    Dim btn As CommandBarButton
+
+    Set btn = cb.Controls.Add(Type:=msoControlButton)
+    btn.Caption = "Enter Value"
+    btn.OnAction = "EnterFinalValue"
+    btn.Style = msoButtonCaption
+    btn.TooltipText = "Enter final value for selected cell"
+
+    Set btn = cb.Controls.Add(Type:=msoControlButton)
+    btn.Caption = "Edit Candidates"
+    btn.OnAction = "EditCellCandidates"
+    btn.Style = msoButtonCaption
+    btn.TooltipText = "Edit candidates for selected cell"
+
+    cb.Visible = True
+    Exit Sub
+
+ErrHandler:
+    ShowError "SetupToolbar"
+End Sub
+
+Public Sub RemoveToolbar()
+    On Error Resume Next
+    Application.CommandBars(TOOLBAR_NAME).Delete
+    On Error GoTo 0
 End Sub
 

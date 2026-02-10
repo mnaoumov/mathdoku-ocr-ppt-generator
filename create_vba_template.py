@@ -37,6 +37,20 @@ def main() -> None:
         # Import the VBA module
         prs.VBProject.VBComponents.Import(bas_path)
 
+        # Inject Presentation_Open into the document module so toolbar auto-appears.
+        # Find the document module by type (100 = vbext_ct_Document) since the name
+        # varies by PowerPoint version/locale.
+        for i in range(1, prs.VBProject.VBComponents.Count + 1):
+            comp = prs.VBProject.VBComponents.Item(i)
+            if comp.Type == 100:  # vbext_ct_Document
+                comp.CodeModule.InsertLines(
+                    comp.CodeModule.CountOfLines + 1,
+                    "Private Sub Presentation_Open()\r\n"
+                    "    SetupToolbar\r\n"
+                    "End Sub\r\n",
+                )
+                break
+
         # Remove default blank slide if present
         while prs.Slides.Count > 0:
             prs.Slides(1).Delete()
