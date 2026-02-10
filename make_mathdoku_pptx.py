@@ -159,9 +159,22 @@ def _profile(n: int) -> dict:
     return LAYOUT_PROFILES[n]
 
 
+@dataclass(frozen=True, order=True)
+class Cell:
+    """0-based (r, c) cell coordinate with A1-style display."""
+    r: int
+    c: int
+
+    def __str__(self) -> str:
+        return f"{chr(ord('A') + self.c)}{self.r + 1}"
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
 @dataclass(frozen=True)
 class Cage:
-    cells: tuple[tuple[int, int], ...]  # (r, c) 0-based
+    cells: tuple[Cell, ...]  # 0-based
     label: str
 
 
@@ -384,7 +397,7 @@ def _op_symbol(op: str) -> str:
     }.get(op, op)
 
 
-def _parse_cell(token: str, *, n: int) -> tuple[int, int]:
+def _parse_cell(token: str, *, n: int) -> Cell:
     m = CELL_RE.match(token.strip().upper())
     if not m:
         raise ValueError(f"Bad cell ref: {token!r} (expected like A1)")
@@ -393,7 +406,7 @@ def _parse_cell(token: str, *, n: int) -> tuple[int, int]:
     r = int(row_s) - 1
     if not (0 <= r < n and 0 <= c < n):
         raise ValueError(f"Cell out of range for {n}x{n}: {token!r}")
-    return (r, c)
+    return Cell(r, c)
 
 
 def _fit_font_size_for_box(*, text: str, base_pt: int, box_w_in: float, box_h_in: float, min_pt: int = 7) -> int:
@@ -408,15 +421,15 @@ def _fit_font_size_for_box(*, text: str, base_pt: int, box_w_in: float, box_h_in
     return max(min_pt, min(base_pt, width_based, height_based))
 
 
-def _compute_boundaries(*, cell_to_cage: dict[tuple[int, int], int], n: int) -> tuple[list[list[bool]], list[list[bool]]]:
+def _compute_boundaries(*, cell_to_cage: dict[Cell, int], n: int) -> tuple[list[list[bool]], list[list[bool]]]:
     v_bound: list[list[bool]] = [[False for _c in range(1, n)] for _r in range(n)]
     h_bound: list[list[bool]] = [[False for _c in range(n)] for _r in range(1, n)]
     for r in range(n):
         for c in range(1, n):
-            v_bound[r][c - 1] = cell_to_cage[(r, c - 1)] != cell_to_cage[(r, c)]
+            v_bound[r][c - 1] = cell_to_cage[Cell(r, c - 1)] != cell_to_cage[Cell(r, c)]
     for r in range(1, n):
         for c in range(n):
-            h_bound[r - 1][c] = cell_to_cage[(r - 1, c)] != cell_to_cage[(r, c)]
+            h_bound[r - 1][c] = cell_to_cage[Cell(r - 1, c)] != cell_to_cage[Cell(r, c)]
     return v_bound, h_bound
 
 
@@ -775,8 +788,8 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     cand_h = float(cand_prof["h_frac"]) * cell_w
 
     # Validate coverage/non-overlap
-    all_cells = {(r, c) for r in range(n) for c in range(n)}
-    cell_to_cage: dict[tuple[int, int], int] = {}
+    all_cells = {Cell(r, c) for r in range(n) for c in range(n)}
+    cell_to_cage: dict[Cell, int] = {}
     for i, cage in enumerate(cages):
         for cell in cage.cells:
             if cell in cell_to_cage:
@@ -820,14 +833,13 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     inset_y = float(cage_prof["inset_y_frac"]) * cell_w
     cage_font = int(cage_prof["font"])
     for i, cage in enumerate(cages):
-        tl = min(cage.cells, key=lambda rc: (rc[0], rc[1]))
-        r, c = tl
-        x = grid_left + c * cell_w + inset_x
-        y = grid_top + r * cell_w + inset_y
+        tl = min(cage.cells)
+        x = grid_left + tl.c * cell_w + inset_x
+        y = grid_top + tl.r * cell_w + inset_y
         label_box_w = float(cage_prof["box_w_frac"]) * cell_w
         label_box_h = float(cage_prof["box_h_frac"]) * cell_w
         box = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(label_box_w), Inches(label_box_h))
-        box.name = f"CAGE_{i}_r{r+1}c{c+1}"
+        box.name = f"CAGE_{i}_{tl}"
         box.fill.background()
         box.line.fill.background()
         tf = box.text_frame
