@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import re
 import sys
+import zipfile
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
 
 import yaml
@@ -681,6 +683,50 @@ def cages_from_yaml(spec: dict) -> tuple[int, list[Cage], str, str, bool, str, s
     return n, cages, title, meta, operations, puzzle_id, out_in_yaml
 
 
+_CUSTOM_UI_XML = b"""\
+<?xml version="1.0" encoding="UTF-8"?>
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+  <ribbon>
+    <qat>
+      <documentControls>
+        <button id="btnEnterValue" label="Enter Value"
+                onAction="RibbonEnterFinalValue"
+                supertip="Enter final value for selected cell"/>
+        <button id="btnEditCandidates" label="Edit Candidates"
+                onAction="RibbonEditCellCandidates"
+                supertip="Edit candidates for selected cell"/>
+      </documentControls>
+    </qat>
+  </ribbon>
+</customUI>
+"""
+
+
+def _inject_ribbon_xml(pptm_path: Path) -> None:
+    """Embed Ribbon XML into a .pptm to add document-level QAT buttons."""
+    buf = BytesIO(pptm_path.read_bytes())
+    out = BytesIO()
+    with zipfile.ZipFile(buf, "r") as zin, zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as zout:
+        for item in zin.infolist():
+            data = zin.read(item.filename)
+            if item.filename == "[Content_Types].xml":
+                data = data.replace(
+                    b"</Types>",
+                    b'<Override PartName="/customUI/customUI14.xml"'
+                    b' ContentType="application/xml"/>\n</Types>',
+                )
+            elif item.filename == "_rels/.rels":
+                data = data.replace(
+                    b"</Relationships>",
+                    b'<Relationship Id="rCustomUI"'
+                    b' Type="http://schemas.microsoft.com/office/2007/relationships/ui/extensibility"'
+                    b' Target="customUI/customUI14.xml"/>\n</Relationships>',
+                )
+            zout.writestr(item, data)
+        zout.writestr("customUI/customUI14.xml", _CUSTOM_UI_XML)
+    pptm_path.write_bytes(out.getvalue())
+
+
 def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     (
         n,
@@ -903,6 +949,10 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     prs.save(out_path)
+
+    if has_vba and out_path.suffix.lower() == ".pptm":
+        _inject_ribbon_xml(out_path)
+
     return out_path
 
 

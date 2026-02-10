@@ -1,8 +1,6 @@
 Attribute VB_Name = "MathdokuCandidates"
 Option Explicit
 
-Private Const TOOLBAR_NAME As String = "Mathdoku"
-
 ' No "hidden" error handlers: unexpected errors show details.
 Private Sub ShowError(ByVal procName As String)
     MsgBox "Error in " & procName & vbCrLf & _
@@ -31,18 +29,9 @@ Private Sub ApplyCandidatesStyle(ByVal shp As Shape, ByVal fontName As String, B
     End With
 End Sub
 
-' Import into PowerPoint VBA:
-'   Alt+F11 -> File -> Import File... -> select this .bas
-'
-' Keyboard access (two options):
-'   A) Floating toolbar (auto-created on file open):
-'      - "Enter Value" and "Edit Candidates" buttons appear automatically
-'      - Run SetupToolbar manually if the toolbar is missing
-'   B) Quick Access Toolbar (true hotkeys):
-'      - Right-click QAT > Customize Quick Access Toolbar
-'      - Choose "Macros" from the dropdown
-'      - Add EnterFinalValue and EditCellCandidates
-'      - They become Alt+1, Alt+2, etc. (based on position)
+' Keyboard access:
+'   QAT buttons are embedded in the .pptm via Ribbon XML (customUI14.xml).
+'   Press Alt to see the keytip numbers on the QAT buttons.
 '
 ' What it does:
 '   - Lets you solve directly on the slide:
@@ -428,40 +417,14 @@ ErrHandler:
 End Sub
 
 ' ---------------------------------------------------------------------------
-' Floating toolbar
+' Ribbon XML callbacks (QAT buttons embedded in .pptm via customUI14.xml)
 ' ---------------------------------------------------------------------------
 
-Public Sub SetupToolbar()
-    On Error GoTo ErrHandler
-    RemoveToolbar
-
-    Dim cb As CommandBar
-    Set cb = Application.CommandBars.Add(Name:=TOOLBAR_NAME, Position:=msoBarFloating, Temporary:=True)
-
-    Dim btn As CommandBarButton
-
-    Set btn = cb.Controls.Add(Type:=msoControlButton)
-    btn.Caption = "Enter Value"
-    btn.OnAction = "EnterFinalValue"
-    btn.Style = msoButtonCaption
-    btn.TooltipText = "Enter final value for selected cell"
-
-    Set btn = cb.Controls.Add(Type:=msoControlButton)
-    btn.Caption = "Edit Candidates"
-    btn.OnAction = "EditCellCandidates"
-    btn.Style = msoButtonCaption
-    btn.TooltipText = "Edit candidates for selected cell"
-
-    cb.Visible = True
-    Exit Sub
-
-ErrHandler:
-    ShowError "SetupToolbar"
+Public Sub RibbonEnterFinalValue(control As IRibbonControl)
+    EnterFinalValue
 End Sub
 
-Public Sub RemoveToolbar()
-    On Error Resume Next
-    Application.CommandBars(TOOLBAR_NAME).Delete
-    On Error GoTo 0
+Public Sub RibbonEditCellCandidates(control As IRibbonControl)
+    EditCellCandidates
 End Sub
 
