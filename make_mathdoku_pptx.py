@@ -845,7 +845,8 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
         tf = box.text_frame
         tf.clear()
         tf.vertical_anchor = MSO_ANCHOR.TOP
-        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+        tf.auto_size = MSO_AUTO_SIZE.NONE
+        tf.word_wrap = False
         tf.margin_left = Inches(0.0)
         tf.margin_right = Inches(0.0)
         tf.margin_top = Inches(0.0)
@@ -855,7 +856,8 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
         p.alignment = PP_ALIGN.LEFT
         if not p.runs:
             p.add_run()
-        _font(p.runs[0], size=cage_font, bold=True, rgb=CAGE_LABEL_BLUE)
+        actual_font = _fit_font_size_for_box(text=cage.label, base_pt=cage_font, box_w_in=label_box_w, box_h_in=label_box_h)
+        _font(p.runs[0], size=actual_font, bold=True, rgb=CAGE_LABEL_BLUE)
         _lock_shape(box, move=True, resize=True, rotate=True, select=True, text_edit=True)
 
     _add_footer(slide, text=FOOTER_TEXT)
