@@ -37,24 +37,26 @@ FOOTER_TEXT = "@mnaoumov"
 # - candidates.*_frac / cage.*_frac are fractions of cell size
 LAYOUT_PROFILES: dict[int, dict] = {
     4: {
-        "title_h_in": 0.90,
+        "title_h_in": 0.85,
         "title_sz": 30,
         "meta_sz": 20,
         "grid_left_in": 0.65,
         "grid_top_in": 1.35,
         "grid_size_in": 4.75,
         "thin_pt": 1.0,
-        "thick_pt": 4.0,
-        "axis_font": 16,
-        "axis_top_offset_frac": 0.22,
-        "axis_side_offset_frac": 0.22,
+        "thick_pt": 5.0,
+        "axis_font": 24,
+        "axis_label_h": 0.34,
+        "axis_label_w": 0.30,
+        "axis_top_offset": 0.42,
+        "axis_side_offset": 0.36,
         "value_font": 52,
-        "candidates": {"x_frac": 0.10, "y_frac": 0.22, "w_frac": 0.55, "h_frac": 0.30, "font": 16},
-        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 16},
+        "candidates": {"x_frac": 0.10, "y_frac": 0.33, "w_frac": 0.80, "h_frac": 0.65, "font": 28},
+        "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.35, "font": 28},
         "solve": {"enabled": True, "left_in": 6.20, "cols": 3, "col_w_in": 2.10, "col_gap_in": 0.25, "font": 16},
     },
     5: {
-        "title_h_in": 0.75,
+        "title_h_in": 0.70,
         "title_sz": 26,
         "meta_sz": 18,
         "grid_left_in": 0.65,
@@ -62,16 +64,18 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "grid_size_in": 5.20,
         "thin_pt": 1.0,
         "thick_pt": 5.0,
-        "axis_font": 16,
-        "axis_top_offset_frac": 0.24,
-        "axis_side_offset_frac": 0.24,
+        "axis_font": 26,
+        "axis_label_h": 0.37,
+        "axis_label_w": 0.32,
+        "axis_top_offset": 0.45,
+        "axis_side_offset": 0.38,
         "value_font": 44,
-        "candidates": {"x_frac": 0.09, "y_frac": 0.21, "w_frac": 0.58, "h_frac": 0.30, "font": 14},
-        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 14},
+        "candidates": {"x_frac": 0.10, "y_frac": 0.32, "w_frac": 0.80, "h_frac": 0.66, "font": 22},
+        "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.33, "font": 24},
         "solve": {"enabled": True, "left_in": 6.55, "cols": 3, "col_w_in": 2.00, "col_gap_in": 0.25, "font": 16},
     },
     6: {
-        "title_h_in": 0.70,
+        "title_h_in": 0.65,
         "title_sz": 24,
         "meta_sz": 16,
         "grid_left_in": 0.65,
@@ -79,12 +83,14 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "grid_size_in": 5.70,
         "thin_pt": 1.0,
         "thick_pt": 6.5,
-        "axis_font": 16,
-        "axis_top_offset_frac": 0.26,
-        "axis_side_offset_frac": 0.26,
+        "axis_font": 22,
+        "axis_label_h": 0.32,
+        "axis_label_w": 0.28,
+        "axis_top_offset": 0.41,
+        "axis_side_offset": 0.34,
         "value_font": 38,
-        "candidates": {"x_frac": 0.08, "y_frac": 0.20, "w_frac": 0.60, "h_frac": 0.30, "font": 13},
-        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 12},
+        "candidates": {"x_frac": 0.10, "y_frac": 0.31, "w_frac": 0.80, "h_frac": 0.67, "font": 18},
+        "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.30, "font": 22},
         "solve": {"enabled": True, "left_in": 6.85, "cols": 3, "col_w_in": 1.90, "col_gap_in": 0.25, "font": 16},
     },
     7: {
@@ -96,12 +102,14 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "grid_size_in": 6.05,
         "thin_pt": 1.0,
         "thick_pt": 6.5,
-        "axis_font": 14,
-        "axis_top_offset_frac": 0.28,
-        "axis_side_offset_frac": 0.24,
+        "axis_font": 28,
+        "axis_label_h": 0.40,
+        "axis_label_w": 0.35,
+        "axis_top_offset": 0.49,
+        "axis_side_offset": 0.42,
         "value_font": 32,
-        "candidates": {"x_frac": 0.07, "y_frac": 0.19, "w_frac": 0.62, "h_frac": 0.30, "font": 12},
-        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 11},
+        "candidates": {"x_frac": 0.10, "y_frac": 0.30, "w_frac": 0.80, "h_frac": 0.68, "font": 15},
+        "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.28, "font": 20},
         "solve": {"enabled": True, "left_in": 7.05, "cols": 3, "col_w_in": 1.85, "col_gap_in": 0.25, "font": 16},
     },
     8: {
@@ -113,12 +121,14 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "grid_size_in": 6.20,
         "thin_pt": 1.0,
         "thick_pt": 6.5,
-        "axis_font": 14,
-        "axis_top_offset_frac": 0.28,
-        "axis_side_offset_frac": 0.24,
+        "axis_font": 28,
+        "axis_label_h": 0.40,
+        "axis_label_w": 0.35,
+        "axis_top_offset": 0.49,
+        "axis_side_offset": 0.42,
         "value_font": 30,
-        "candidates": {"x_frac": 0.07, "y_frac": 0.19, "w_frac": 0.62, "h_frac": 0.30, "font": 11},
-        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 10},
+        "candidates": {"x_frac": 0.10, "y_frac": 0.28, "w_frac": 0.80, "h_frac": 0.70, "font": 13},
+        "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.26, "font": 18},
         "solve": {"enabled": True, "left_in": 7.15, "cols": 3, "col_w_in": 1.80, "col_gap_in": 0.25, "font": 16},
     },
     9: {
@@ -130,12 +140,14 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "grid_size_in": 6.30,
         "thin_pt": 1.0,
         "thick_pt": 6.5,
-        "axis_font": 14,
-        "axis_top_offset_frac": 0.28,
-        "axis_side_offset_frac": 0.24,
+        "axis_font": 28,
+        "axis_label_h": 0.40,
+        "axis_label_w": 0.35,
+        "axis_top_offset": 0.49,
+        "axis_side_offset": 0.42,
         "value_font": 28,
-        "candidates": {"x_frac": 0.07, "y_frac": 0.19, "w_frac": 0.62, "h_frac": 0.30, "font": 11},
-        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 9},
+        "candidates": {"x_frac": 0.10, "y_frac": 0.26, "w_frac": 0.80, "h_frac": 0.72, "font": 12},
+        "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.70, "box_h_frac": 0.24, "font": 16},
         "solve": {"enabled": True, "left_in": 7.25, "cols": 3, "col_w_in": 1.75, "col_gap_in": 0.25, "font": 16},
     },
 }
@@ -254,15 +266,24 @@ def _add_hidden_meta(slide, *, puzzle_id: str, n: int, operations: bool) -> None
 
 def _add_axis_labels(slide, *, grid_left: float, grid_top: float, cell_w: float, n: int) -> None:
     prof = _profile(n)
-    top_offset = float(prof["axis_top_offset_frac"]) * cell_w
-    side_offset = float(prof["axis_side_offset_frac"]) * cell_w
     axis_font = int(prof["axis_font"])
+    label_h = float(prof["axis_label_h"])
+    label_w = float(prof["axis_label_w"])
+    top_offset = float(prof["axis_top_offset"])
+    side_offset = float(prof["axis_side_offset"])
+
+    top_y = grid_top - top_offset
+    side_x = grid_left - side_offset
 
     for c in range(n):
         x = grid_left + c * cell_w
-        box = slide.shapes.add_textbox(Inches(x), Inches(grid_top - top_offset), Inches(cell_w), Inches(0.25))
+        box = slide.shapes.add_textbox(Inches(x), Inches(top_y), Inches(cell_w), Inches(label_h))
         tf = box.text_frame
         tf.clear()
+        tf.margin_left = Inches(0)
+        tf.margin_right = Inches(0)
+        tf.margin_top = Inches(0)
+        tf.margin_bottom = Inches(0)
         p = tf.paragraphs[0]
         p.text = chr(ord("A") + c)
         p.alignment = PP_ALIGN.CENTER
@@ -272,10 +293,15 @@ def _add_axis_labels(slide, *, grid_left: float, grid_top: float, cell_w: float,
         _lock_shape(box, move=True, resize=True, rotate=True, select=True, text_edit=True)
 
     for r in range(n):
-        y = grid_top + r * cell_w + (cell_w - 0.25) / 2
-        box = slide.shapes.add_textbox(Inches(grid_left - side_offset), Inches(y), Inches(0.25), Inches(0.25))
+        y = grid_top + r * cell_w + (cell_w - label_h) / 2
+        box = slide.shapes.add_textbox(Inches(side_x), Inches(y), Inches(label_w), Inches(label_h))
         tf = box.text_frame
         tf.clear()
+        tf.margin_left = Inches(0)
+        tf.margin_right = Inches(0)
+        tf.margin_top = Inches(0)
+        tf.margin_bottom = Inches(0)
+        tf.vertical_anchor = MSO_ANCHOR.MIDDLE
         p = tf.paragraphs[0]
         p.text = str(r + 1)
         p.alignment = PP_ALIGN.CENTER
@@ -328,7 +354,7 @@ def _add_cell_candidates_box(
 
     tf = box.text_frame
     tf.clear()
-    tf.vertical_anchor = MSO_ANCHOR.TOP
+    tf.vertical_anchor = MSO_ANCHOR.BOTTOM
     tf.word_wrap = True
     tf.auto_size = MSO_AUTO_SIZE.NONE
     tf.margin_left = Inches(0.0)
@@ -338,7 +364,7 @@ def _add_cell_candidates_box(
 
     p = tf.paragraphs[0]
     p.text = " "
-    p.alignment = PP_ALIGN.LEFT
+    p.alignment = PP_ALIGN.CENTER
     _font(p.runs[0], name="Consolas", size=font_size, bold=False, rgb=rgb)
 
     _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=False)
@@ -359,12 +385,12 @@ def _op_symbol(op: str) -> str:
         "+": "+",
         "-": "−",
         "−": "−",
-        "*": "×",
-        "x": "×",
-        "X": "×",
-        "×": "×",
-        "/": "÷",
-        "÷": "÷",
+        "*": "x",
+        "x": "x",
+        "X": "x",
+        "x": "x",
+        "/": "/",
+        "÷": "/",
     }.get(op, op)
 
 
@@ -438,7 +464,7 @@ def _draw_thin_internal_grid(
     h_bound: list[list[bool]],
 ) -> None:
     cell_w = grid_size / n
-    thin_rgb = RGBColor(140, 140, 140)
+    thin_rgb = RGBColor(170, 170, 170)
     for r in range(n):
         for c in range(1, n):
             if v_bound[r][c - 1]:
@@ -613,7 +639,7 @@ def cages_from_yaml(spec: dict) -> tuple[int, list[Cage], str, str, bool, str, s
 
     meta = str(spec.get("meta", "")).strip()
     if not meta:
-        parts = [f"Size {n}×{n}"]
+        parts = [f"Size {n}x{n}"]
         if difficulty is not None:
             parts.append(f"Difficulty {difficulty}")
         parts.append("With operators" if operations else "Without operators")
@@ -739,15 +765,15 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
             _add_cell_hitbox(slide, left=cell_left, top=cell_top, size=cell_w, name=f"CELL_{cell_ref}")
             cell_hitboxes.append((r, c, slide.shapes[-1]))
 
-    # Axis labels
-    _add_axis_labels(slide, grid_left=grid_left, grid_top=grid_top, cell_w=cell_w, n=n)
-
     # Borders
     v_bound, h_bound = _compute_boundaries(cell_to_cage=cell_to_cage, n=n)
     _draw_thin_internal_grid(slide, grid_left=grid_left, grid_top=grid_top, grid_size=grid_size, n=n, thin_pt=thin_pt, v_bound=v_bound, h_bound=h_bound)
     _draw_cage_boundaries(slide, grid_left=grid_left, grid_top=grid_top, grid_size=grid_size, n=n, cage_pt=thick_pt, v_bound=v_bound, h_bound=h_bound)
     _draw_thick_join_squares(slide, grid_left=grid_left, grid_top=grid_top, grid_size=grid_size, n=n, cage_pt=thick_pt, v_bound=v_bound, h_bound=h_bound)
     _draw_outer_border(slide, grid_left=grid_left, grid_top=grid_top, grid_size=grid_size, cage_pt=thick_pt)
+
+    # Axis labels (drawn after borders so they appear on top)
+    _add_axis_labels(slide, grid_left=grid_left, grid_top=grid_top, cell_w=cell_w, n=n)
 
     # Cage labels (one per cage, top-left cell)
     cage_prof = prof["cage"]

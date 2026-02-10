@@ -21,7 +21,7 @@ End Sub
 
 Private Sub ApplyCandidatesStyle(ByVal shp As Shape, ByVal fontName As String, ByVal fontSize As Single, ByVal fontColorRGB As Long)
     With shp.TextFrame.TextRange
-        .ParagraphFormat.Alignment = ppAlignLeft
+        .ParagraphFormat.Alignment = ppAlignCenter
         .Font.Name = fontName
         .Font.Size = fontSize
         .Font.Color.RGB = fontColorRGB
