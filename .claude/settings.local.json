@@ -3,7 +3,11 @@
     "allow": [
       "Bash(python:*)",
       "Read(//f/**)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(winget:*)",
+      "Bash(choco:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/Tesseract-OCR\")",
+      "Bash(findstr:*)"
     ]
   }
 }
