@@ -311,8 +311,8 @@ def _add_axis_labels(slide, *, grid_left: float, grid_top: float, cell_w: float,
         _lock_shape(box, move=True, resize=True, rotate=True, select=True, text_edit=True)
 
 
-def _add_cell_value_box(slide, *, left: float, top: float, size: float, name: str, font_size: int) -> None:
-    box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(size), Inches(size))
+def _add_cell_value_box(slide, *, left: float, top: float, width: float, height: float, name: str, font_size: int) -> None:
+    box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
     box.name = name
     box.fill.background()
     box.line.fill.background()
@@ -757,7 +757,10 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     cell_w = grid_size / n
 
     # Visuals are hardcoded in the per-size profile.
-    value_font = int(prof["value_font"])
+    val_prof = prof["value"]
+    value_font = int(val_prof["font"])
+    val_y_frac = float(val_prof["y_frac"])
+    val_h_frac = float(val_prof["h_frac"])
     cand_rgb: RGBColor = DEFAULT_CANDIDATES_DARK_RED
     thin_pt = float(prof["thin_pt"])
     thick_pt = float(prof["thick_pt"])
@@ -789,7 +792,7 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
             cell_left = grid_left + c * cell_w
             cell_top = grid_top + r * cell_w
             cell_ref = f"{chr(ord('A') + c)}{r+1}"
-            _add_cell_value_box(slide, left=cell_left, top=cell_top, size=cell_w, name=f"VALUE_{cell_ref}", font_size=value_font)
+            _add_cell_value_box(slide, left=cell_left, top=cell_top + val_y_frac * cell_w, width=cell_w, height=val_h_frac * cell_w, name=f"VALUE_{cell_ref}", font_size=value_font)
             _add_cell_candidates_box(
                 slide,
                 left=cell_left + cand_left,
