@@ -2,36 +2,7 @@ id: "9x9 stress"
 size: 9
 difficulty: 0
 operations: true
-footer: "@mnaoumov"
-lockLabels: true
-
-# Two line thicknesses:
-lineWidths:
-  thin: 1.0
-  thick: 6.5
-
-# Leave these as null to use auto-scaling based on cell size:
-fonts:
-  value: null
-  cellCandidates: null
-
-colors:
-  cellCandidates: "8B0000"
-
-solveNotes:
-  enabled: true
-  columns: 3
-  minColWidth: 1.35
-
-# Prefill a couple of cells to visually test layout (inspired by the app screenshot).
-prefill:
-  values:
-    E5: 9
-    E9: 8
-  cellCandidates:
-    B1: "123456789"
-
-# Cages inspired by the app style: labels like "14+", "504×", "1−", etc.
+output: "Mathdoku_9x9_stresstest_v2.pptx"
 cages:
   - cells: [A1, A2]
     label: "14+"

@@ -2,19 +2,6 @@ id: 8
 size: 4
 difficulty: 1
 operations: false
-footer: "@mnaoumov"
-lockLabels: true
-lineWidths:
-  thin: 1
-  thick: 4
-fonts:
-  value: 52
-  cellCandidates: 16
-colors:
-  cellCandidates: "8B0000"
-solveNotes:
-  enabled: true
-  columns: 3
 cages:
   - cells: [A1, B1]
     value: 2

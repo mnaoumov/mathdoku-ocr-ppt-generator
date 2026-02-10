@@ -26,6 +26,125 @@ DEFAULT_CANDIDATES_DARK_RED = RGBColor(139, 0, 0)
 
 THIN_GRID_PT_DEFAULT = 1.0
 THICK_BORDER_PT_DEFAULT = 6.5
+FOOTER_TEXT = "@mnaoumov"
+
+# Per-size layout profiles (4..9).
+# These are intentionally *discrete* (not derived formulas) so the layout can
+# be tuned to match the Mathdoku app look for each size.
+#
+# - grid_*_in / solve.*_in are absolute inches
+# - axis_*_offset_frac are fractions of cell size
+# - candidates.*_frac / cage.*_frac are fractions of cell size
+LAYOUT_PROFILES: dict[int, dict] = {
+    4: {
+        "title_h_in": 0.90,
+        "title_sz": 30,
+        "meta_sz": 20,
+        "grid_left_in": 0.65,
+        "grid_top_in": 1.35,
+        "grid_size_in": 4.75,
+        "thin_pt": 1.0,
+        "thick_pt": 4.0,
+        "axis_font": 16,
+        "axis_top_offset_frac": 0.22,
+        "axis_side_offset_frac": 0.22,
+        "value_font": 52,
+        "candidates": {"x_frac": 0.10, "y_frac": 0.22, "w_frac": 0.55, "h_frac": 0.30, "font": 16},
+        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 16},
+        "solve": {"enabled": True, "left_in": 6.20, "cols": 3, "col_w_in": 2.10, "col_gap_in": 0.25, "font": 16},
+    },
+    5: {
+        "title_h_in": 0.75,
+        "title_sz": 26,
+        "meta_sz": 18,
+        "grid_left_in": 0.65,
+        "grid_top_in": 1.25,
+        "grid_size_in": 5.20,
+        "thin_pt": 1.0,
+        "thick_pt": 5.0,
+        "axis_font": 16,
+        "axis_top_offset_frac": 0.24,
+        "axis_side_offset_frac": 0.24,
+        "value_font": 44,
+        "candidates": {"x_frac": 0.09, "y_frac": 0.21, "w_frac": 0.58, "h_frac": 0.30, "font": 14},
+        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 14},
+        "solve": {"enabled": True, "left_in": 6.55, "cols": 3, "col_w_in": 2.00, "col_gap_in": 0.25, "font": 16},
+    },
+    6: {
+        "title_h_in": 0.70,
+        "title_sz": 24,
+        "meta_sz": 16,
+        "grid_left_in": 0.65,
+        "grid_top_in": 1.15,
+        "grid_size_in": 5.70,
+        "thin_pt": 1.0,
+        "thick_pt": 6.5,
+        "axis_font": 16,
+        "axis_top_offset_frac": 0.26,
+        "axis_side_offset_frac": 0.26,
+        "value_font": 38,
+        "candidates": {"x_frac": 0.08, "y_frac": 0.20, "w_frac": 0.60, "h_frac": 0.30, "font": 13},
+        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 12},
+        "solve": {"enabled": True, "left_in": 6.85, "cols": 3, "col_w_in": 1.90, "col_gap_in": 0.25, "font": 16},
+    },
+    7: {
+        "title_h_in": 0.55,
+        "title_sz": 22,
+        "meta_sz": 14,
+        "grid_left_in": 0.65,
+        "grid_top_in": 1.10,
+        "grid_size_in": 6.05,
+        "thin_pt": 1.0,
+        "thick_pt": 6.5,
+        "axis_font": 14,
+        "axis_top_offset_frac": 0.28,
+        "axis_side_offset_frac": 0.24,
+        "value_font": 32,
+        "candidates": {"x_frac": 0.07, "y_frac": 0.19, "w_frac": 0.62, "h_frac": 0.30, "font": 12},
+        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 11},
+        "solve": {"enabled": True, "left_in": 7.05, "cols": 3, "col_w_in": 1.85, "col_gap_in": 0.25, "font": 16},
+    },
+    8: {
+        "title_h_in": 0.55,
+        "title_sz": 22,
+        "meta_sz": 14,
+        "grid_left_in": 0.65,
+        "grid_top_in": 1.10,
+        "grid_size_in": 6.20,
+        "thin_pt": 1.0,
+        "thick_pt": 6.5,
+        "axis_font": 14,
+        "axis_top_offset_frac": 0.28,
+        "axis_side_offset_frac": 0.24,
+        "value_font": 30,
+        "candidates": {"x_frac": 0.07, "y_frac": 0.19, "w_frac": 0.62, "h_frac": 0.30, "font": 11},
+        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 10},
+        "solve": {"enabled": True, "left_in": 7.15, "cols": 3, "col_w_in": 1.80, "col_gap_in": 0.25, "font": 16},
+    },
+    9: {
+        "title_h_in": 0.55,
+        "title_sz": 22,
+        "meta_sz": 14,
+        "grid_left_in": 0.65,
+        "grid_top_in": 1.10,
+        "grid_size_in": 6.30,
+        "thin_pt": 1.0,
+        "thick_pt": 6.5,
+        "axis_font": 14,
+        "axis_top_offset_frac": 0.28,
+        "axis_side_offset_frac": 0.24,
+        "value_font": 28,
+        "candidates": {"x_frac": 0.07, "y_frac": 0.19, "w_frac": 0.62, "h_frac": 0.30, "font": 11},
+        "cage": {"inset_x_frac": 0.06, "inset_y_frac": 0.05, "box_w_frac": 0.45, "box_h_frac": 0.22, "font": 9},
+        "solve": {"enabled": True, "left_in": 7.25, "cols": 3, "col_w_in": 1.75, "col_gap_in": 0.25, "font": 16},
+    },
+}
+
+
+def _profile(n: int) -> dict:
+    if n not in LAYOUT_PROFILES:
+        raise ValueError(f"Only sizes 4-9 are supported right now (got {n})")
+    return LAYOUT_PROFILES[n]
 
 
 @dataclass(frozen=True)
@@ -75,10 +194,11 @@ def _lock_shape(shape, *, move: bool, resize: bool, rotate: bool, select: bool, 
 
 
 def _add_title(slide, *, title: str, meta: str, n: int) -> None:
-    if n >= 7:
-        top, h, title_sz, meta_sz = 0.05, 0.55, 22, 14
-    else:
-        top, h, title_sz, meta_sz = 0.05, 0.90, 30, 20
+    prof = _profile(n)
+    top = 0.05
+    h = float(prof["title_h_in"])
+    title_sz = int(prof["title_sz"])
+    meta_sz = int(prof["meta_sz"])
 
     box = slide.shapes.add_textbox(Inches(0.2), Inches(top), Inches(SLIDE_W_IN - 0.4), Inches(h))
     tf = box.text_frame
@@ -133,12 +253,10 @@ def _add_hidden_meta(slide, *, puzzle_id: str, n: int, operations: bool) -> None
 
 
 def _add_axis_labels(slide, *, grid_left: float, grid_top: float, cell_w: float, n: int) -> None:
-    if n >= 7:
-        top_offset = min(0.55, max(0.38, cell_w * 0.28))
-        side_offset = min(0.48, max(0.28, cell_w * 0.22))
-    else:
-        top_offset = min(0.45, max(0.26, cell_w * 0.22))
-        side_offset = min(0.40, max(0.22, cell_w * 0.20))
+    prof = _profile(n)
+    top_offset = float(prof["axis_top_offset_frac"]) * cell_w
+    side_offset = float(prof["axis_side_offset_frac"]) * cell_w
+    axis_font = int(prof["axis_font"])
 
     for c in range(n):
         x = grid_left + c * cell_w
@@ -148,7 +266,7 @@ def _add_axis_labels(slide, *, grid_left: float, grid_top: float, cell_w: float,
         p = tf.paragraphs[0]
         p.text = chr(ord("A") + c)
         p.alignment = PP_ALIGN.CENTER
-        _font(p.runs[0], size=16, bold=True, rgb=AXIS_LABEL_MAGENTA)
+        _font(p.runs[0], size=axis_font, bold=True, rgb=AXIS_LABEL_MAGENTA)
         box.line.fill.background()
         box.fill.background()
         _lock_shape(box, move=True, resize=True, rotate=True, select=True, text_edit=True)
@@ -161,7 +279,7 @@ def _add_axis_labels(slide, *, grid_left: float, grid_top: float, cell_w: float,
         p = tf.paragraphs[0]
         p.text = str(r + 1)
         p.alignment = PP_ALIGN.CENTER
-        _font(p.runs[0], size=16, bold=True, rgb=AXIS_LABEL_MAGENTA)
+        _font(p.runs[0], size=axis_font, bold=True, rgb=AXIS_LABEL_MAGENTA)
         box.line.fill.background()
         box.fill.background()
         _lock_shape(box, move=True, resize=True, rotate=True, select=True, text_edit=True)
@@ -459,31 +577,15 @@ def _draw_outer_border(
 
 
 def _compute_layout(n: int, *, solve_enabled: bool, solve_cols: int, solve_min_col_w: float) -> dict:
-    left_margin = 0.65
-    right_margin = 0.40
-    footer_h = 0.55
-
-    if n >= 7:
-        grid_top = 1.10
-    else:
-        grid_top = 1.35
-
-    max_h = SLIDE_H_IN - footer_h - grid_top
-    gap = 0.60 if solve_enabled else 0.0
-    min_solve_w = (solve_cols * solve_min_col_w) if solve_enabled else 0.0
-    max_w_for_grid = SLIDE_W_IN - left_margin - right_margin - gap - min_solve_w
-    grid_size = max(3.0, min(max_h, max_w_for_grid))
-
-    solve_left = left_margin + grid_size + gap
-    solve_w = max(0.0, SLIDE_W_IN - solve_left - right_margin) if solve_enabled else 0.0
-
+    # Intentionally ignore solve_* args: all UI layout is hardcoded per-size.
+    prof = _profile(n)
+    solve = prof["solve"]
     return {
-        "grid_left": left_margin,
-        "grid_top": grid_top,
-        "grid_size": grid_size,
-        "solve_enabled": solve_enabled and solve_w >= (solve_cols * 0.9),
-        "solve_left": solve_left,
-        "solve_w": solve_w,
+        "grid_left": float(prof["grid_left_in"]),
+        "grid_top": float(prof["grid_top_in"]),
+        "grid_size": float(prof["grid_size_in"]),
+        "solve_enabled": bool(solve["enabled"]),
+        "solve_left": float(solve["left_in"]),
     }
 
 
@@ -494,7 +596,7 @@ def load_yaml_spec(path: Path) -> dict:
     return data
 
 
-def cages_from_yaml(spec: dict) -> tuple[int, list[Cage], str, str, str, float, float, bool, str, dict, dict, dict]:
+def cages_from_yaml(spec: dict) -> tuple[int, list[Cage], str, str, bool, str, str | None]:
     n = int(spec.get("size", 4))
     difficulty = spec.get("difficulty", None)
     operations = bool(spec.get("operations", True))
@@ -517,36 +619,7 @@ def cages_from_yaml(spec: dict) -> tuple[int, list[Cage], str, str, str, float, 
         parts.append("With operators" if operations else "Without operators")
         meta = " • ".join(parts)
 
-    footer = str(spec.get("footer", "@mnaoumov"))
     out_in_yaml = spec.get("output", None)
-
-    lw = spec.get("lineWidths", {}) or {}
-    thin_pt = float(lw.get("thin", THIN_GRID_PT_DEFAULT))
-    thick_pt = float(lw.get("thick", THICK_BORDER_PT_DEFAULT))
-
-    fonts = spec.get("fonts", {}) or {}
-    colors = spec.get("colors", {}) or {}
-
-    value_font = fonts.get("value", None)
-    cand_font = fonts.get("cellCandidates", None)
-
-    cand_color_hex = colors.get("cellCandidates", None)
-    if cand_color_hex:
-        hx = str(cand_color_hex).strip().lstrip("#")
-        if len(hx) != 6:
-            raise ValueError("colors.cellCandidates must be 6-digit hex")
-        cand_rgb = RGBColor(int(hx[0:2], 16), int(hx[2:4], 16), int(hx[4:6], 16))
-    else:
-        cand_rgb = DEFAULT_CANDIDATES_DARK_RED
-
-    solve_notes = spec.get("solveNotes", {}) or {}
-    solve_enabled = bool(solve_notes.get("enabled", True))
-    solve_cols = int(solve_notes.get("columns", 3))
-    solve_min_col_w = float(solve_notes.get("minColWidth", 1.35))
-
-    prefill = spec.get("prefill", {}) or {}
-    prefill_values = prefill.get("values", {}) or {}
-    prefill_candidates = prefill.get("cellCandidates", {}) or {}
 
     cages_in = spec.get("cages", None)
     if not isinstance(cages_in, list) or not cages_in:
@@ -561,8 +634,11 @@ def cages_from_yaml(spec: dict) -> tuple[int, list[Cage], str, str, str, float, 
             raise ValueError(f"cages[{idx}].cells must be a non-empty list")
         cells = tuple(_parse_cell(str(t), n=n) for t in cells_raw)
 
-        label = str(item.get("label", "")).strip() if "label" in item else ""
-        if not label:
+        # `label` may be intentionally empty (e.g. singleton cages in stress tests).
+        if "label" in item:
+            label = str(item.get("label", "")).strip()
+        else:
+            label = ""
             if "value" not in item:
                 raise ValueError(f"cages[{idx}] must have 'label' or 'value'")
             value = str(item["value"]).strip()
@@ -576,18 +652,7 @@ def cages_from_yaml(spec: dict) -> tuple[int, list[Cage], str, str, str, float, 
 
         cages.append(Cage(cells=cells, label=label))
 
-    ui = {
-        "value_font": value_font,
-        "cand_font": cand_font,
-        "cand_rgb": cand_rgb,
-        "solve_enabled": solve_enabled,
-        "solve_cols": solve_cols,
-        "solve_min_col_w": solve_min_col_w,
-        "prefill_values": prefill_values,
-        "prefill_candidates": prefill_candidates,
-    }
-
-    return n, cages, title, meta, footer, thin_pt, thick_pt, operations, puzzle_id, out_in_yaml, ui, solve_notes
+    return n, cages, title, meta, operations, puzzle_id, out_in_yaml
 
 
 def build_pptx(*, spec_path: Path, spec: dict) -> Path:
@@ -596,15 +661,12 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
         cages,
         title,
         meta,
-        footer,
-        thin_pt,
-        thick_pt,
         operations,
         puzzle_id,
         out_in_yaml,
-        ui,
-        _solve_notes,
     ) = cages_from_yaml(spec)
+
+    prof = _profile(n)
 
     out_path = None
     if out_in_yaml:
@@ -618,7 +680,7 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     _set_slide_size(prs)
     slide = prs.slides.add_slide(prs.slide_layouts[6])
 
-    layout = _compute_layout(n, solve_enabled=bool(ui["solve_enabled"]), solve_cols=int(ui["solve_cols"]), solve_min_col_w=float(ui["solve_min_col_w"]))
+    layout = _compute_layout(n, solve_enabled=True, solve_cols=3, solve_min_col_w=1.0)
 
     _add_title(slide, title=title, meta=meta, n=n)
     _add_hidden_meta(slide, puzzle_id=puzzle_id, n=n, operations=bool(operations))
@@ -628,23 +690,20 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     grid_size = float(layout["grid_size"])
     cell_w = grid_size / n
 
-    # Determine fonts
-    cell_pts = cell_w * 72.0
-    value_font = int(ui["value_font"]) if ui["value_font"] is not None else int(max(16, min(72, round(cell_pts * 0.62))))
-    cand_font = int(ui["cand_font"]) if ui["cand_font"] is not None else (16 if n <= 4 else 11)
-    cand_rgb: RGBColor = ui["cand_rgb"]
+    # Visuals are hardcoded in the per-size profile.
+    value_font = int(prof["value_font"])
+    cand_rgb: RGBColor = DEFAULT_CANDIDATES_DARK_RED
+    thin_pt = float(prof["thin_pt"])
+    thick_pt = float(prof["thick_pt"])
 
-    # Candidates box placement (inspired by the app screenshots):
-    # - consistent top-left placement across all cells
-    # - sits *under* the cage label region
-    inset_y = min(0.04, cell_w * 0.10)
-    label_region_h = min(0.34, cell_w * 0.30)
-    label_gap = min(0.03, cell_w * 0.06)
+    cand_prof = prof["candidates"]
+    cand_font = int(cand_prof["font"])
 
-    cand_left = min(0.08, cell_w * 0.10)
-    cand_top = inset_y + label_region_h + label_gap
-    cand_w = min(cell_w * 0.78, cell_w - 2 * cand_left)
-    cand_h = min(0.45, cell_w * 0.42)
+    # Candidates box placement (precalculated per-size).
+    cand_left = float(cand_prof["x_frac"]) * cell_w
+    cand_top = float(cand_prof["y_frac"]) * cell_w
+    cand_w = float(cand_prof["w_frac"]) * cell_w
+    cand_h = float(cand_prof["h_frac"]) * cell_w
 
     # Validate coverage/non-overlap
     all_cells = {(r, c) for r in range(n) for c in range(n)}
@@ -691,16 +750,17 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     _draw_outer_border(slide, grid_left=grid_left, grid_top=grid_top, grid_size=grid_size, cage_pt=thick_pt)
 
     # Cage labels (one per cage, top-left cell)
-    inset_x = min(0.05, cell_w * 0.12)
-    inset_y = min(0.04, cell_w * 0.10)
-    cage_font_base = int(max(9, min(18, round(cell_pts * 0.26))))
+    cage_prof = prof["cage"]
+    inset_x = float(cage_prof["inset_x_frac"]) * cell_w
+    inset_y = float(cage_prof["inset_y_frac"]) * cell_w
+    cage_font = int(cage_prof["font"])
     for i, cage in enumerate(cages):
         tl = min(cage.cells, key=lambda rc: (rc[0], rc[1]))
         r, c = tl
         x = grid_left + c * cell_w + inset_x
         y = grid_top + r * cell_w + inset_y
-        label_box_w = min(1.05, cell_w * 0.90)
-        label_box_h = min(0.34, cell_w * 0.30)
+        label_box_w = float(cage_prof["box_w_frac"]) * cell_w
+        label_box_h = float(cage_prof["box_h_frac"]) * cell_w
         box = slide.shapes.add_textbox(Inches(x), Inches(y), Inches(label_box_w), Inches(label_box_h))
         box.name = f"CAGE_{i}_r{r+1}c{c+1}"
         box.fill.background()
@@ -718,22 +778,27 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
         p.alignment = PP_ALIGN.LEFT
         if not p.runs:
             p.add_run()
-        fitted = _fit_font_size_for_box(text=cage.label, base_pt=cage_font_base, box_w_in=label_box_w, box_h_in=label_box_h, min_pt=7)
-        _font(p.runs[0], size=fitted, bold=True, rgb=CAGE_LABEL_BLUE)
+        _font(p.runs[0], size=cage_font, bold=True, rgb=CAGE_LABEL_BLUE)
         _lock_shape(box, move=True, resize=True, rotate=True, select=True, text_edit=True)
 
-    _add_footer(slide, text=footer)
+    _add_footer(slide, text=FOOTER_TEXT)
 
     # Solve notes columns (editable)
     if bool(layout["solve_enabled"]):
-        notes_left = float(layout["solve_left"])
-        notes_right_margin = 0.4
-        avail_w = max(0.5, SLIDE_W_IN - notes_left - notes_right_margin)
-        col_w = avail_w / int(ui["solve_cols"])
+        solve_prof = prof["solve"]
+        notes_left = float(solve_prof["left_in"])
+        cols = int(solve_prof["cols"])
+        col_w = float(solve_prof["col_w_in"])
+        col_gap = float(solve_prof["col_gap_in"])
         notes_top = grid_top
         notes_h = grid_size
-        for i in range(int(ui["solve_cols"])):
-            box = slide.shapes.add_textbox(Inches(notes_left + i * col_w), Inches(notes_top), Inches(col_w - 0.15), Inches(notes_h))
+        for i in range(cols):
+            box = slide.shapes.add_textbox(
+                Inches(notes_left + i * (col_w + col_gap)),
+                Inches(notes_top),
+                Inches(col_w),
+                Inches(notes_h),
+            )
             box.name = f"SOLVE_NOTES_COL{i+1}"
             box.fill.background()
             box.line.color.rgb = RGBColor(200, 200, 200)
@@ -749,7 +814,7 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
             p = tf.paragraphs[0]
             p.text = " "
             p.alignment = PP_ALIGN.LEFT
-            _font(p.runs[0], size=16, bold=False, rgb=VALUE_GRAY)
+            _font(p.runs[0], size=int(solve_prof["font"]), bold=False, rgb=VALUE_GRAY)
             _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=False)
 
     # Bring hitboxes to front so clicks/Tab hit cells, but do it in a stable
@@ -771,7 +836,7 @@ def main(argv: list[str]) -> None:
         print("Usage: python make_mathdoku_pptx.py <spec.yaml>")
         raise SystemExit(2)
     if argv[1].startswith("-"):
-        print("Error: CLI flags/parameters are not supported. Put all settings in the YAML file.")
+        print("Error: CLI flags/parameters are not supported. YAML contains only the puzzle spec; UI/layout is hardcoded in the generator.")
         raise SystemExit(2)
 
     spec_path = Path(argv[1])
