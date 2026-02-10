@@ -51,7 +51,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.42,
         "axis_side_offset": 0.36,
         "value_font": 52,
-        "candidates": {"x_frac": 0.10, "y_frac": 0.33, "w_frac": 0.80, "h_frac": 0.65, "font": 28},
+        "candidates": {"x_frac": 0.15, "y_frac": 0.38, "w_frac": 0.80, "h_frac": 0.60, "font": 22},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.35, "font": 28},
         "solve": {"enabled": True, "left_in": 6.20, "cols": 3, "col_w_in": 2.10, "col_gap_in": 0.25, "font": 16},
     },
@@ -70,7 +70,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.45,
         "axis_side_offset": 0.38,
         "value_font": 44,
-        "candidates": {"x_frac": 0.10, "y_frac": 0.32, "w_frac": 0.80, "h_frac": 0.66, "font": 22},
+        "candidates": {"x_frac": 0.05, "y_frac": 0.36, "w_frac": 0.88, "h_frac": 0.62, "font": 18},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.33, "font": 24},
         "solve": {"enabled": True, "left_in": 6.55, "cols": 3, "col_w_in": 2.00, "col_gap_in": 0.25, "font": 16},
     },
@@ -89,7 +89,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.41,
         "axis_side_offset": 0.34,
         "value_font": 38,
-        "candidates": {"x_frac": 0.10, "y_frac": 0.31, "w_frac": 0.80, "h_frac": 0.67, "font": 18},
+        "candidates": {"x_frac": 0.07, "y_frac": 0.33, "w_frac": 0.86, "h_frac": 0.65, "font": 15},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.30, "font": 22},
         "solve": {"enabled": True, "left_in": 6.85, "cols": 3, "col_w_in": 1.90, "col_gap_in": 0.25, "font": 16},
     },
@@ -108,7 +108,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
         "value_font": 32,
-        "candidates": {"x_frac": 0.10, "y_frac": 0.30, "w_frac": 0.80, "h_frac": 0.68, "font": 15},
+        "candidates": {"x_frac": 0.08, "y_frac": 0.31, "w_frac": 0.84, "h_frac": 0.67, "font": 12},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.28, "font": 20},
         "solve": {"enabled": True, "left_in": 7.05, "cols": 3, "col_w_in": 1.85, "col_gap_in": 0.25, "font": 16},
     },
@@ -127,7 +127,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
         "value_font": 30,
-        "candidates": {"x_frac": 0.10, "y_frac": 0.28, "w_frac": 0.80, "h_frac": 0.70, "font": 13},
+        "candidates": {"x_frac": 0.08, "y_frac": 0.29, "w_frac": 0.84, "h_frac": 0.69, "font": 10},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.65, "box_h_frac": 0.26, "font": 18},
         "solve": {"enabled": True, "left_in": 7.15, "cols": 3, "col_w_in": 1.80, "col_gap_in": 0.25, "font": 16},
     },
@@ -146,7 +146,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
         "value_font": 28,
-        "candidates": {"x_frac": 0.10, "y_frac": 0.26, "w_frac": 0.80, "h_frac": 0.72, "font": 12},
+        "candidates": {"x_frac": 0.09, "y_frac": 0.27, "w_frac": 0.88, "h_frac": 0.71, "font": 7},
         "cage": {"inset_x_frac": 0.03, "inset_y_frac": 0.02, "box_w_frac": 0.70, "box_h_frac": 0.24, "font": 16},
         "solve": {"enabled": True, "left_in": 7.25, "cols": 3, "col_w_in": 1.75, "col_gap_in": 0.25, "font": 16},
     },
@@ -364,7 +364,7 @@ def _add_cell_candidates_box(
 
     p = tf.paragraphs[0]
     p.text = " "
-    p.alignment = PP_ALIGN.CENTER
+    p.alignment = PP_ALIGN.LEFT
     _font(p.runs[0], name="Consolas", size=font_size, bold=False, rgb=rgb)
 
     _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=False)
