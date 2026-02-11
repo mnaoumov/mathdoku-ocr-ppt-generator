@@ -7,7 +7,11 @@
       "Bash(winget:*)",
       "Bash(choco:*)",
       "Bash(export PATH=\"$PATH:/c/Program Files/Tesseract-OCR\")",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(tesseract:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }
