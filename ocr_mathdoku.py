@@ -17,7 +17,9 @@ Requirements:
 from __future__ import annotations
 
 import argparse
+import os
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -29,6 +31,20 @@ try:
     import pytesseract
 except ImportError:
     pytesseract = None
+
+# Auto-detect Tesseract on Windows when not in PATH
+if pytesseract is not None and sys.platform == "win32" and not shutil.which("tesseract"):
+    _WIN_PATHS = [
+        os.path.join(os.environ.get("ProgramFiles", r"C:\Program Files"),
+                     "Tesseract-OCR", "tesseract.exe"),
+        os.path.join(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"),
+                     "Tesseract-OCR", "tesseract.exe"),
+        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Tesseract-OCR", "tesseract.exe"),
+    ]
+    for _p in _WIN_PATHS:
+        if os.path.isfile(_p):
+            pytesseract.pytesseract.tesseract_cmd = _p
+            break
 
 _DEBUG = False
 
@@ -355,6 +371,15 @@ def _require_tesseract() -> None:
             "Error: pytesseract not installed.\n"
             "  pip install pytesseract\n"
             "  + install Tesseract engine",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+    if not shutil.which(pytesseract.pytesseract.tesseract_cmd):
+        print(
+            "Error: Tesseract engine not found.\n"
+            "  Windows: https://github.com/UB-Mannheim/tesseract/wiki\n"
+            "  macOS:   brew install tesseract\n"
+            "  Linux:   apt install tesseract-ocr",
             file=sys.stderr,
         )
         raise SystemExit(1)
