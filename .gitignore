@@ -3,3 +3,4 @@ __pycache__
 *.pptm
 *.yaml
 !samples/*.yaml
+*.png
