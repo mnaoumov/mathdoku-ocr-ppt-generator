@@ -1,0 +1,25 @@
+[project]
+name = "mathdoku-ocr-ppt-generator"
+version = "0.1.0"
+description = "OCR tool for Mathdoku puzzles and PowerPoint generator"
+requires-python = ">=3.10"
+dependencies = [
+    "opencv-python",
+    "numpy",
+    "pytesseract",
+    "pyyaml",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.hatch.scripts]
+test = "pytest {args}"
