@@ -679,8 +679,7 @@ def ocr_mathdoku(
         puzzle_id = m.group(0) if m else stem
 
     result: dict = {"id": puzzle_id, "size": n}
-    if difficulty is not None:
-        result["difficulty"] = difficulty
+    result["difficulty"] = difficulty if difficulty is not None else "?"
     result["operations"] = has_ops
     result["cages"] = cages_data
 
