@@ -1,0 +1,85 @@
+id: 4
+size: 9
+difficulty: '?'
+operations: true
+cages:
+- cells: [A1, B1, A2, A3]
+  value: 288
+  op: x
+- cells: [C1, C2, D2, E2, F2]
+  value: 11664
+  op: x
+- cells: [D1, E1]
+  value: 12
+  op: x
+- cells: [F1, G1, H1]
+  value: 15
+  op: +
+- cells: [I1, H2, I2]
+  value: 20
+  op: x
+- cells: [B2, B3, C3]
+  value: 7
+  op: +
+- cells: [G2, F3, G3, G4, H4]
+  value: 6804
+  op: x
+- cells: [D3, E3]
+  value: 1,
+  op: '-'
+- cells: [H3, I3, I4]
+  value: 30
+  op: x
+- cells: [A4, A5, A6]
+  value: 40
+  op: x
+- cells: [B4, C4, D4, D5]
+  value: 360
+  op: x
+- cells: [E4, F4]
+  value: 28
+  op: x
+- cells: [B5, C5, B6, B7]
+  value: 450
+  op: x
+- cells: [E5, F5]
+  value: 7
+  op: '-'
+- cells: [G5, G6, H6, H7]
+  value: 54
+  op: x
+- cells: [H5, I5]
+  value: 13
+  op: +
+- cells: [C6, D6, E6]
+  value: 56
+  op: x
+- cells: [F6]
+  value: 9
+- cells: [I6, I7]
+  value: 6
+  op: '-'
+- cells: [A7, A8, B8, A9, B9]
+  value: 7938
+  op: x
+- cells: [C7, D7, C8]
+  value: 20
+  op: +
+- cells: [E7]
+  value: 3
+- cells: [F7, G7, D8, E8, F8, G8]
+  value: 320
+  op: x
+- cells: [H8, G9, H9]
+  value: 13
+  op: +
+- cells: [I8]
+  value: 7
+- cells: [C9, D9]
+  value: 1
+  op: '-'
+- cells: [E9, F9]
+  value: 20
+  op: x
+- cells: [I9]
+  value: 9

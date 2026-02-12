@@ -1,0 +1,21 @@
+id: 5
+size: 4
+difficulty: 3
+operations: true
+cages:
+- cells: [A1, B1, C1, B2]
+  value: 36
+  op: x
+- cells: [D1, C2, D2, C3]
+  value: 11
+  op: +
+- cells: [A2, A3, A4, B4]
+  value: 8
+  op: x
+- cells: [B3]
+  value: 2
+- cells: [D3, D4]
+  value: 2
+  op: '-'
+- cells: [C4]
+  value: 4
