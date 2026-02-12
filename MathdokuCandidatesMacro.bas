@@ -29,6 +29,82 @@ Private Sub ApplyCandidatesStyle(ByVal shp As Shape, ByVal fontName As String, B
     End With
 End Sub
 
+Private Function IsDigitInRowOrCol(ByVal sld As Slide, ByVal r As Long, ByVal c As Long, ByVal digit As Long, ByVal gridSize As Long) As Boolean
+    ' Check if digit already exists as a final value in the same row or column
+    Dim i As Long, shp As Shape, valText As String
+
+    ' Check row
+    For i = 1 To gridSize
+        If i <> c Then
+            On Error Resume Next
+            Set shp = sld.Shapes("VALUE_" & CellRefA1(r, i))
+            On Error GoTo 0
+            If Not shp Is Nothing Then
+                If shp.HasTextFrame Then
+                    valText = Trim$(shp.TextFrame.TextRange.Text)
+                    If Len(valText) = 1 And IsNumeric(valText) Then
+                        If CLng(valText) = digit Then
+                            IsDigitInRowOrCol = True
+                            Exit Function
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    Next i
+
+    ' Check column
+    For i = 1 To gridSize
+        If i <> r Then
+            On Error Resume Next
+            Set shp = sld.Shapes("VALUE_" & CellRefA1(i, c))
+            On Error GoTo 0
+            If Not shp Is Nothing Then
+                If shp.HasTextFrame Then
+                    valText = Trim$(shp.TextFrame.TextRange.Text)
+                    If Len(valText) = 1 And IsNumeric(valText) Then
+                        If CLng(valText) = digit Then
+                            IsDigitInRowOrCol = True
+                            Exit Function
+                        End If
+                    End If
+                End If
+            End If
+        End If
+    Next i
+
+    IsDigitInRowOrCol = False
+End Function
+
+Private Sub ApplyCandidatesWithConflictHighlight(ByVal shp As Shape, ByVal sld As Slide, ByVal r As Long, ByVal c As Long, ByVal gridSize As Long, ByVal fontName As String, ByVal fontSize As Single, ByVal normalColor As Long)
+    ' Apply formatting with red color for impossible candidates
+    Dim txt As String, i As Long, ch As String, digit As Long
+    Dim conflictColor As Long
+    conflictColor = RGB(220, 50, 50) ' Red for conflicts
+
+    txt = shp.TextFrame.TextRange.Text
+
+    ' First apply base style
+    With shp.TextFrame.TextRange
+        .ParagraphFormat.Alignment = ppAlignLeft
+        .Font.Name = fontName
+        .Font.Size = fontSize
+        .Font.Color.RGB = normalColor
+        .Font.Bold = msoFalse
+    End With
+
+    ' Now color individual digits that are conflicts
+    For i = 1 To Len(txt)
+        ch = Mid$(txt, i, 1)
+        If ch >= "1" And ch <= "9" Then
+            digit = CLng(ch)
+            If IsDigitInRowOrCol(sld, r, c, digit, gridSize) Then
+                shp.TextFrame.TextRange.Characters(i, 1).Font.Color.RGB = conflictColor
+            End If
+        End If
+    Next i
+End Sub
+
 ' Keyboard access:
 '   QAT buttons are embedded in the .pptm via Ribbon XML (customUI14.xml).
 '   Press Alt to see the keytip numbers on the QAT buttons.
@@ -418,10 +494,11 @@ Public Sub EditCellCandidates()
 
     If Len(normalized) = 0 Then
         candShp.TextFrame.TextRange.Text = " "
+        ApplyCandidatesStyle candShp, candFontName, candFontSize, candFontColor
     Else
         candShp.TextFrame.TextRange.Text = FormatLikeApp(normalized, sz)
+        ApplyCandidatesWithConflictHighlight candShp, sld, r, c, sz, candFontName, candFontSize, candFontColor
     End If
-    ApplyCandidatesStyle candShp, candFontName, candFontSize, candFontColor
 
     ' Clear the final value when setting candidates
     valueShp.TextFrame.TextRange.Text = " "
