@@ -362,7 +362,7 @@ def _group_cages(
 
 # ── label OCR ──────────────────────────────────────────────────────────────
 
-_LABEL_RE = re.compile(r"^(\d+)([+\-x×÷/])?$")
+_LABEL_RE = re.compile(r"^(\d+)([+\-x×÷/?])?$")
 
 
 def _require_tesseract() -> None:
@@ -427,13 +427,17 @@ def _trim_to_text(crop_gray: np.ndarray) -> np.ndarray:
         return crop_gray
 
     # 4. Keep contours that look like text (not thin border lines)
+    # Must balance filtering border artifacts vs keeping small operators (-, +)
     text_cnts: list[np.ndarray] = []
     for cnt in contours:
         x, y, cw, ch = cv2.boundingRect(cnt)
-        if cw * ch < 20:
+        if cw * ch < 10:  # lowered from 20 to keep small operators
             continue
         aspect = min(cw, ch) / max(cw, ch) if max(cw, ch) > 0 else 0
-        if aspect < 0.08:
+        # Allow thin horizontal strokes (potential minus signs) if not too thin
+        # Border artifacts span full height/width; operators are short
+        is_short_horizontal = cw > ch * 2 and cw < w * 0.5 and ch < h * 0.3
+        if aspect < 0.08 and not is_short_horizontal:
             continue
         text_cnts.append(cnt)
 
@@ -478,6 +482,7 @@ def _run_tesseract(padded: np.ndarray, configs: list[str]) -> str:
     from collections import Counter
     results: list[tuple[str, str | None]] = []  # (digits, op_or_None)
     best_raw = ""
+    raw_texts: list[str] = []  # for debugging
     for cfg in configs:
         try:
             text = pytesseract.image_to_string(padded, config=cfg).strip()
@@ -488,24 +493,31 @@ def _run_tesseract(padded: np.ndarray, configs: list[str]) -> str:
         text = text.replace("X", "x")
         text = text.replace("O", "0").replace("o", "0").replace("Q", "0")
         text = text.replace("l", "1").replace("I", "1")
+        raw_texts.append(text)
         m = _LABEL_RE.match(text)
         if not m:
             # Try to salvage trailing operator from garbled/unknown characters
             m_raw = re.match(r"^(\d+)(.)$", text)
             if m_raw and not m_raw.group(2).isdigit():
                 ch = m_raw.group(2)
-                if ch in "+-\u2212\u2013":
+                # Dash variants: hyphen-minus, minus sign, en-dash, em-dash,
+                # figure dash, horizontal bar, soft hyphen, non-breaking hyphen
+                if ch in "+-\u2212\u2013\u2014\u2012\u2015\u00ad\u2011_":
                     text = m_raw.group(1) + "-"
                 elif ch in "/\u00f7|\\":
                     text = m_raw.group(1) + "/"
-                else:
+                elif ch in "*xX\u00d7":
                     text = m_raw.group(1) + "x"
+                else:
+                    # Unknown operator - mark with ? for manual review
+                    text = m_raw.group(1) + "?"
                 m = _LABEL_RE.match(text)
         if m:
             results.append((m.group(1), m.group(2)))
         elif len(text) > len(best_raw):
             best_raw = text
 
+    _dbg(f"  Tesseract raw: {raw_texts}")
     if not results:
         return best_raw
 
@@ -531,10 +543,15 @@ def _run_tesseract(padded: np.ndarray, configs: list[str]) -> str:
         best_digits = digit_counts.most_common(1)[0][0]
 
     # Include operator if any result with this digit string has one
-    ops = [op for d, op in results if d == best_digits and op]
-    if ops:
-        op_counts = Counter(ops)
+    # Exclude '?' from voting - it's a fallback marker, not a real operator
+    real_ops = [op for d, op in results if d == best_digits and op and op != "?"]
+    if real_ops:
+        op_counts = Counter(real_ops)
         return best_digits + op_counts.most_common(1)[0][0]
+    # Fall back to '?' if that's all we have
+    fallback_ops = [op for d, op in results if d == best_digits and op == "?"]
+    if fallback_ops:
+        return best_digits + "?"
     return best_digits
 
 
@@ -614,7 +631,7 @@ def _read_cage_labels(
             digits = re.match(r"\d+", raw)
             val = digits.group(0) if digits else raw
             rest = raw[len(val):]
-            op = rest[0] if rest and rest[0] in "+-x/" else None
+            op = rest[0] if rest and rest[0] in "+-x/?" else None
             results.append((val, op))
         else:
             results.append(("?", None))

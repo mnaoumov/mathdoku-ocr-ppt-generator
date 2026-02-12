@@ -1,0 +1,19 @@
+id: 11
+size: 4
+difficulty: 4
+operations: false
+cages:
+- cells: [A1, A2]
+  value: 1
+- cells: [B1, B2, A3, B3, C3]
+  value: 12
+- cells: [C1, D1, C2]
+  value: 12
+- cells: [D2, D3]
+  value: 2
+- cells: [A4, B4]
+  value: 2
+- cells: [C4]
+  value: 3
+- cells: [D4]
+  value: 1

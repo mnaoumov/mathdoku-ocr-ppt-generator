@@ -2,5 +2,5 @@
 __pycache__
 *.pptm
 *.yaml
-!samples/*.yaml
+!tests/fixtures/*.yaml
 *.png

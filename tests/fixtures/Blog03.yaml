@@ -1,0 +1,25 @@
+id: 3
+size: 4
+difficulty: '?'
+operations: true
+cages:
+- cells: [A1, B1, A2]
+  value: 18
+  op: x
+- cells: [C1, C2]
+  value: 3
+  op: '-'
+- cells: [D1]
+  value: 1
+- cells: [B2, B3, C3]
+  value: 6
+  op: +
+- cells: [D2, D3]
+  value: 2
+  op: '-'
+- cells: [A3, A4, B4]
+  value: 16
+  op: x
+- cells: [C4, D4]
+  value: 1
+  op: '-'
