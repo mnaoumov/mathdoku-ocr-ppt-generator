@@ -1,0 +1,43 @@
+id: 13
+size: 5
+difficulty: '1'
+operations: true
+cages:
+- cells: [A1, A2]
+  value: 2
+  op: '-'
+- cells: [B1, B2]
+  value: 2
+  op: /
+- cells: [C1, C2]
+  value: 2
+  op: x
+- cells: [D1, E1]
+  value: 1
+  op: '-'
+- cells: [D2, D3]
+  value: 6
+  op: x
+- cells: [E2, E3]
+  value: 5
+  op: x
+- cells: [A3, B3]
+  value: 3
+  op: '-'
+- cells: [C3, C4]
+  value: 1
+  op: '-'
+- cells: [A4, B4]
+  value: 10
+  op: x
+- cells: [D4, D5]
+  value: 4
+  op: /
+- cells: [E4, E5]
+  value: 5
+  op: +
+- cells: [A5, B5]
+  value: 3
+  op: /
+- cells: [C5]
+  value: 5
