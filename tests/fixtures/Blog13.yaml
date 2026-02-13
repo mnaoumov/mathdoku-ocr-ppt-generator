@@ -1,6 +1,6 @@
 id: 13
 size: 5
-difficulty: '1'
+difficulty: 1
 operations: true
 cages:
 - cells: [A1, A2]
