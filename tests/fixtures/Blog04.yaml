@@ -25,7 +25,7 @@ cages:
   value: 6804
   op: x
 - cells: [D3, E3]
-  value: 1,
+  value: 1
   op: '-'
 - cells: [H3, I3, I4]
   value: 30
