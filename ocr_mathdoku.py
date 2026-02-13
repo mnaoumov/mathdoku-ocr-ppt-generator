@@ -389,23 +389,22 @@ def _trim_to_text(crop_gray: np.ndarray) -> np.ndarray:
     """Remove border artifacts and crop tightly around label text."""
     h, w = crop_gray.shape
 
-    # 1. Binarize with fixed threshold to pick up dark label text only,
-    #    ignoring gray candidate numbers (typically > 160).
-    _, binary = cv2.threshold(crop_gray, 160, 255, cv2.THRESH_BINARY_INV)
+    # 1. Use Otsu threshold to detect dark pixels (works for borders and text)
+    _, binary = cv2.threshold(crop_gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     # 2. Strip continuous dark columns/rows from left/top edge (grid border
     #    remnants).  Only strip if the column/row is >90% dark across its
-    #    full extent — digit strokes never span the full height/width.
-    max_strip = min(w, h) // 4  # never strip more than 25% of the crop
+    #    full extent — ensures we only remove solid border lines, not text.
+    max_strip = min(w, h) // 6  # never strip more than ~16% of the crop
     left = 0
     for c in range(min(max_strip, w)):
-        if np.mean(binary[:, c] > 0) > 0.9:
+        if np.mean(binary[:, c] > 0) > 0.90:
             left = c + 1
         else:
             break
     top = 0
     for r in range(min(max_strip, h)):
-        if np.mean(binary[r, :] > 0) > 0.9:
+        if np.mean(binary[r, :] > 0) > 0.90:
             top = r + 1
         else:
             break
@@ -436,7 +435,8 @@ def _trim_to_text(crop_gray: np.ndarray) -> np.ndarray:
         aspect = min(cw, ch) / max(cw, ch) if max(cw, ch) > 0 else 0
         # Allow thin horizontal strokes (potential minus signs) if not too thin
         # Border artifacts span full height/width; operators are short
-        is_short_horizontal = cw > ch * 2 and cw < w * 0.5 and ch < h * 0.3
+        # Relaxed cw < w * 0.7 to allow wider operators in short labels like "1-"
+        is_short_horizontal = cw > ch * 2 and cw < w * 0.7 and ch < h * 0.3
         if aspect < 0.08 and not is_short_horizontal:
             continue
         text_cnts.append(cnt)
