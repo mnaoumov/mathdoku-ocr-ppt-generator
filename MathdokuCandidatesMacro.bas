@@ -193,7 +193,8 @@ Private Function DigitsOnly(ByVal text As String) As String
 End Function
 
 Private Function FormatLikeApp(ByVal digits As String, ByVal gridSize As Long) As String
-    ' Split across 2 lines: ceil(N/2) digits on line 1, rest on line 2.
+    ' Place each digit at its fixed grid position; missing digits become spaces.
+    ' Split across 2 lines: ceil(N/2) positions on line 1, rest on line 2.
     ' Spacing between digits is handled by Font.Spacing (digit_margin in metadata).
 
     Dim perLine As Long
@@ -201,14 +202,36 @@ Private Function FormatLikeApp(ByVal digits As String, ByVal gridSize As Long) A
     perLine = (gridSize + 1) \ 2 ' ceil(N/2)
     If perLine <= 0 Then perLine = 5
 
-    Dim d As String
-    d = digits
-    If Len(d) <= perLine Then
-        FormatLikeApp = d
-        Exit Function
-    End If
+    ' Build line 1: fixed positions for digits 1..perLine
+    Dim line1 As String, line2 As String
+    Dim v As Long, needLine2 As Boolean
+    line1 = ""
+    For v = 1 To perLine
+        If InStr(digits, CStr(v)) > 0 Then
+            line1 = line1 & CStr(v)
+        Else
+            line1 = line1 & " "
+        End If
+    Next v
 
-    FormatLikeApp = Left$(d, perLine) & vbCrLf & Mid$(d, perLine + 1)
+    ' Build line 2: fixed positions for digits perLine+1..gridSize
+    line2 = ""
+    needLine2 = False
+    For v = perLine + 1 To gridSize
+        If InStr(digits, CStr(v)) > 0 Then
+            line2 = line2 & CStr(v)
+            needLine2 = True
+        Else
+            line2 = line2 & " "
+        End If
+    Next v
+
+    ' Always output both lines so vertical positions stay consistent
+    ' (bottom-anchored textbox: line 2 always at bottom, line 1 always above)
+    Dim line2trimmed As String
+    line2trimmed = RTrim$(line2)
+    If Len(line2trimmed) = 0 Then line2trimmed = " "
+    FormatLikeApp = line1 & vbCrLf & line2trimmed
 End Function
 
 Private Function ActiveSlide() As Slide
