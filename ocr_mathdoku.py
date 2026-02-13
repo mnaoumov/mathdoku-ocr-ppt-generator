@@ -362,7 +362,7 @@ def _group_cages(
 
 # ── label OCR ──────────────────────────────────────────────────────────────
 
-_LABEL_RE = re.compile(r"^(\d+)([+\-x×÷/?])?$")
+_LABEL_RE = re.compile(r"^(\d[\d,]*)([+\-x×÷/?])?$")
 
 
 def _require_tesseract() -> None:
@@ -425,17 +425,17 @@ def _trim_to_text(crop_gray: np.ndarray) -> np.ndarray:
     if not contours:
         return crop_gray
 
-    # 4. Keep contours that look like text (not thin border lines)
+    # 5. Keep contours that look like text (not thin border lines)
     # Must balance filtering border artifacts vs keeping small operators (-, +)
+    min_area = max(5, int(w * h * 0.002))  # scale threshold with crop size
     text_cnts: list[np.ndarray] = []
     for cnt in contours:
         x, y, cw, ch = cv2.boundingRect(cnt)
-        if cw * ch < 10:  # lowered from 20 to keep small operators
+        if cw * ch < min_area:
             continue
         aspect = min(cw, ch) / max(cw, ch) if max(cw, ch) > 0 else 0
         # Allow thin horizontal strokes (potential minus signs) if not too thin
         # Border artifacts span full height/width; operators are short
-        # Relaxed cw < w * 0.7 to allow wider operators in short labels like "1-"
         is_short_horizontal = cw > ch * 2 and cw < w * 0.7 and ch < h * 0.3
         if aspect < 0.08 and not is_short_horizontal:
             continue
@@ -548,20 +548,22 @@ def _run_tesseract(padded: np.ndarray, configs: list[str]) -> str:
     if real_ops:
         op_counts = Counter(real_ops)
         return best_digits + op_counts.most_common(1)[0][0]
-    # Fall back to '?' if that's all we have
+    # Fall back to '?' only if majority of results see an operator
+    # (avoids spurious '?' from single noisy config)
+    no_op_count = sum(1 for d, op in results if d == best_digits and op is None)
     fallback_ops = [op for d, op in results if d == best_digits and op == "?"]
-    if fallback_ops:
+    if len(fallback_ops) > no_op_count:
         return best_digits + "?"
     return best_digits
 
 
 _OCR_CONFIGS = [
-    "--oem 1 --psm 7 -c tessedit_char_whitelist=0123456789+x-/",
-    "--oem 1 --psm 8 -c tessedit_char_whitelist=0123456789+x-/",
-    "--oem 1 --psm 13 -c tessedit_char_whitelist=0123456789+x-/",
-    "--psm 7 -c tessedit_char_whitelist=0123456789+x-/",
-    "--psm 8 -c tessedit_char_whitelist=0123456789+x-/",
-    "--psm 13 -c tessedit_char_whitelist=0123456789+x-/",
+    "--oem 1 --psm 7 -c tessedit_char_whitelist=0123456789+x-/,",
+    "--oem 1 --psm 8 -c tessedit_char_whitelist=0123456789+x-/,",
+    "--oem 1 --psm 13 -c tessedit_char_whitelist=0123456789+x-/,",
+    "--psm 7 -c tessedit_char_whitelist=0123456789+x-/,",
+    "--psm 8 -c tessedit_char_whitelist=0123456789+x-/,",
+    "--psm 13 -c tessedit_char_whitelist=0123456789+x-/,",
     "--psm 7",
     "--psm 8",
 ]
@@ -594,6 +596,128 @@ def _ocr_crop(crop_gray: np.ndarray) -> str:
     return result
 
 
+def _extract_label_crop(
+    gray: np.ndarray, grid_up: np.ndarray | None,
+    gx: int, gy: int, upscale: int,
+    cx: int, cy: int, cw: int, ch: int,
+    margin: int = 2,
+) -> np.ndarray | None:
+    """Extract the label region crop from the cell at (cx, cy)."""
+    if grid_up is not None:
+        s = upscale
+        lx = int(cx * s) + margin
+        ly = int(cy * s) + margin
+        lw = int(cw * s * 0.92)
+        lh = int(ch * s * 0.42)
+        crop = grid_up[ly:ly + lh, lx:lx + lw]
+    else:
+        lx = gx + cx + margin
+        ly = gy + cy + margin
+        lw = int(cw * 0.92)
+        lh = int(ch * 0.42)
+        crop = gray[ly:ly + lh, lx:lx + lw]
+    if crop.size == 0 or crop.shape[0] < 5 or crop.shape[1] < 5:
+        return None
+    return crop
+
+
+def _detect_trailing_operator(crop_gray: np.ndarray) -> str | None:
+    """Detect an operator character (+, -, x, /) at the right end of a label crop.
+
+    Uses connected-component analysis to isolate the rightmost glyph,
+    then classifies it by shape and single-character OCR (PSM 10).
+    """
+    trimmed = _trim_to_text(crop_gray)
+    h, w = trimmed.shape
+    if h < 5 or w < 5:
+        return None
+
+    _, binary = cv2.threshold(trimmed, 0, 255,
+                              cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    bp = 2
+    padded = cv2.copyMakeBorder(binary, bp, bp, bp, bp,
+                                cv2.BORDER_CONSTANT, value=0)
+    contours, _ = cv2.findContours(padded, cv2.RETR_EXTERNAL,
+                                   cv2.CHAIN_APPROX_SIMPLE)
+    if len(contours) < 2:
+        return None
+
+    # Sort contours left-to-right by bounding-rect x
+    sorted_cnts = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
+    last = sorted_cnts[-1]
+    lx, ly, lw, lh_c = cv2.boundingRect(last)
+
+    # Must be in the right portion of the crop (after digits)
+    if lx < w * 0.35:
+        return None
+    # Must be reasonably small (operator, not a digit)
+    if lw * lh_c > w * h * 0.35:
+        return None
+
+    # Extract the operator region with padding
+    pad = 4
+    ox = max(0, lx - bp - pad)
+    oy = max(0, ly - bp - pad)
+    ow = min(w - ox, lw + 2 * pad + 2 * bp)
+    oh = min(h - oy, lh_c + 2 * pad + 2 * bp)
+    op_crop = trimmed[oy:oy + oh, ox:ox + ow]
+    if op_crop.size == 0 or op_crop.shape[0] < 3 or op_crop.shape[1] < 3:
+        return None
+
+    # Aggressively upscale for single-character OCR (operators are tiny)
+    oh_px, ow_px = op_crop.shape
+    if oh_px < 60:
+        scale = max(4, 60 // oh_px)
+        op_crop = cv2.resize(op_crop, None, fx=scale, fy=scale,
+                             interpolation=cv2.INTER_CUBIC)
+    op_prepared = _prepare_ocr_image(op_crop)
+
+    # Try PSM 10 (single character) with operator-only whitelist
+    _OP_CONFIGS = [
+        "--psm 10 -c tessedit_char_whitelist=+-x/",
+        "--oem 1 --psm 10 -c tessedit_char_whitelist=+-x/",
+        "--psm 13 -c tessedit_char_whitelist=+-x/",
+        "--oem 1 --psm 13 -c tessedit_char_whitelist=+-x/",
+        "--psm 10",
+        "--psm 13",
+    ]
+    from collections import Counter
+    votes: list[str] = []
+    for cfg in _OP_CONFIGS:
+        try:
+            text = pytesseract.image_to_string(op_prepared, config=cfg).strip()
+        except Exception:
+            continue
+        text = text.replace("×", "x").replace("÷", "/").replace("−", "-")
+        if len(text) == 1 and text in {"+", "-", "x", "/"}:
+            votes.append(text)
+    if votes:
+        best_op = Counter(votes).most_common(1)[0][0]
+        _dbg(f"  Operator detection votes: {votes} -> {best_op}")
+        return best_op
+
+    # Fallback: shape-based classification
+    aspect = lw / lh_c if lh_c > 0 else 0
+    if 0.6 < aspect < 1.6:
+        # Near-square: likely '+' or 'x'
+        # Check for cross shape by looking at center density
+        cx_c = lx - bp + lw // 2
+        cy_c = ly - bp + lh_c // 2
+        # Horizontal and vertical strips through center
+        h_strip = binary[max(0, cy_c - 1):cy_c + 2, lx - bp:lx - bp + lw]
+        v_strip = binary[ly - bp:ly - bp + lh_c, max(0, cx_c - 1):cx_c + 2]
+        h_fill = np.mean(h_strip > 0) if h_strip.size > 0 else 0
+        v_fill = np.mean(v_strip > 0) if v_strip.size > 0 else 0
+        if h_fill > 0.5 and v_fill > 0.5:
+            _dbg(f"  Shape-based: cross detected (h={h_fill:.2f} v={v_fill:.2f})")
+            return "+"
+    elif aspect > 2.0:
+        # Wide and short: likely '-'
+        return "-"
+
+    return None
+
+
 def _read_cage_labels(
     gray: np.ndarray,
     gx: int, gy: int,
@@ -603,6 +727,27 @@ def _read_cage_labels(
 ) -> list[tuple[str, str | None]]:
     """For each cage, read and parse its label. Returns [(value, op), ...]."""
     _require_tesseract()
+
+    # If cells are small, pre-upscale the grid region for better OCR accuracy.
+    # Extracting tiny 15px-tall crops leads to heavy per-crop upscaling with
+    # poor quality.  Upscaling the whole grid once gives much better results.
+    cell_h = (h_pos[-1] - h_pos[0]) / n
+    cell_w = (v_pos[-1] - v_pos[0]) / n
+    min_cell = min(cell_h, cell_w)
+    _MIN_CELL_FOR_OCR = 50  # cells below this size benefit from pre-upscaling
+    if min_cell < _MIN_CELL_FOR_OCR:
+        upscale = max(2, int(_MIN_CELL_FOR_OCR / min_cell) + 1)
+        # Extract grid region with small padding
+        gh_end = min(gy + max(h_pos) + 20, gray.shape[0])
+        gw_end = min(gx + max(v_pos) + 20, gray.shape[1])
+        grid_crop = gray[gy:gh_end, gx:gw_end]
+        grid_up = cv2.resize(grid_crop, None, fx=upscale, fy=upscale,
+                             interpolation=cv2.INTER_CUBIC)
+        _dbg(f"Pre-upscaled grid {upscale}x: {grid_crop.shape} -> {grid_up.shape}")
+    else:
+        grid_up = None
+        upscale = 1
+
     results: list[tuple[str, str | None]] = []
     for idx, cells in enumerate(cages):
         tl_r, tl_c = cells[0]
@@ -610,13 +755,24 @@ def _read_cage_labels(
         cw = v_pos[tl_c + 1] - cx
         ch = h_pos[tl_r + 1] - cy
 
-        margin = 3
-        lx = gx + cx + margin
-        ly = gy + cy + margin
-        lw = int(cw * 0.92)
-        lh = int(ch * 0.42)
+        if grid_up is not None:
+            # Use upscaled grid for crop extraction
+            s = upscale
+            cw_s, ch_s = cw * s, ch * s
+            margin = max(3, int(min(cw_s, ch_s) * 0.03))
+            lx = int(cx * s) + margin
+            ly = int(cy * s) + margin
+            lw = int(cw_s * 0.92)
+            lh = int(ch_s * 0.42)
+            crop = grid_up[ly:ly + lh, lx:lx + lw]
+        else:
+            margin = max(3, int(min(cw, ch) * 0.03))
+            lx = gx + cx + margin
+            ly = gy + cy + margin
+            lw = int(cw * 0.92)
+            lh = int(ch * 0.42)
+            crop = gray[ly:ly + lh, lx:lx + lw]
 
-        crop = gray[ly:ly + lh, lx:lx + lw]
         if crop.size == 0:
             results.append(("?", None))
             continue
@@ -624,17 +780,143 @@ def _read_cage_labels(
         _dbg_save(f"debug_label_{idx}.png", crop)
 
         raw = _ocr_crop(crop)
+
+        # If first attempt failed or didn't match, retry with wider margins
+        # to avoid border artifacts bleeding into the crop
+        if not _LABEL_RE.match(raw):
+            for margin2 in (margin * 2, margin * 3, margin * 4):
+                if grid_up is not None:
+                    lx2 = int(cx * s) + margin2
+                    ly2 = int(cy * s) + margin2
+                    crop2 = grid_up[ly2:ly2 + lh, lx2:lx2 + lw]
+                else:
+                    lx2 = gx + cx + margin2
+                    ly2 = gy + cy + margin2
+                    crop2 = gray[ly2:ly2 + lh, lx2:lx2 + lw]
+                if crop2.size == 0 or crop2.shape[0] < 5 or crop2.shape[1] < 5:
+                    continue
+                raw2 = _ocr_crop(crop2)
+                if _LABEL_RE.match(raw2):
+                    _dbg(f"  Retry with margin={margin2} improved: {raw!r} -> {raw2!r}")
+                    raw = raw2
+                    break
         m = _LABEL_RE.match(raw)
         if m:
             results.append((m.group(1), m.group(2)))
         elif raw and raw[0].isdigit():
-            digits = re.match(r"\d+", raw)
+            digits = re.match(r"[\d,]+", raw)
             val = digits.group(0) if digits else raw
             rest = raw[len(val):]
             op = rest[0] if rest and rest[0] in "+-x/?" else None
             results.append((val, op))
         else:
             results.append(("?", None))
+
+    # Post-processing pass 1: For small-cell grids, retry short-value labels
+    # at 3x individual upscale from original gray to recover leading digits
+    # lost to border artifacts in the 2x pre-upscale.
+    if grid_up is not None:
+        for idx in range(len(results)):
+            value, op = results[idx]
+            if not value or value == "?" or len(value) != 2:
+                continue  # only retry labels with exactly 2 digits
+            tl_r, tl_c = cages[idx][0]
+            cx_r, cy_r = v_pos[tl_c], h_pos[tl_r]
+            cw_r = v_pos[tl_c + 1] - cx_r
+            ch_r = h_pos[tl_r + 1] - cy_r
+            for retry_m in (3, 4):
+                rx = gx + cx_r + retry_m
+                ry = gy + cy_r + retry_m
+                rw = int(cw_r * 0.95)
+                rh = int(ch_r * 0.45)
+                crop_raw = gray[ry:ry + rh, rx:rx + rw]
+                if crop_raw.size == 0 or crop_raw.shape[0] < 5:
+                    continue
+                crop_hi = cv2.resize(crop_raw, None, fx=3, fy=3,
+                                     interpolation=cv2.INTER_CUBIC)
+                raw_hi = _ocr_crop(crop_hi)
+                m_hi = _LABEL_RE.match(raw_hi)
+                if m_hi and len(m_hi.group(1)) > len(value):
+                    # Accept if same operator or new operator is compatible
+                    hi_op = m_hi.group(2)
+                    if op is not None and hi_op is not None and hi_op != op:
+                        continue
+                    new_op = hi_op or op
+                    _dbg(f"  Cage {idx}: 3x retry {value}{op or ''}"
+                         f" -> {m_hi.group(1)}{new_op or ''}")
+                    results[idx] = (m_hi.group(1), new_op)
+                    break
+
+    # Post-processing pass 2: enforce operators for multi-cell cages.
+    # Only applies when the puzzle SHOWS operations (most cages already have one).
+    multi_with_op = sum(1 for (_, op), c in zip(results, cages) if len(c) > 1 and op)
+    multi_without_op = sum(1 for (_, op), c in zip(results, cages) if len(c) > 1 and not op)
+    ops_shown = multi_with_op > multi_without_op
+    if not ops_shown:
+        return results
+
+    for idx in range(len(results)):
+        value, op = results[idx]
+        if len(cages[idx]) <= 1 or op is not None:
+            continue
+        # Multi-cell cage without operator detected
+        _dbg(f"  Cage {idx}: multi-cell without op, value={value!r}")
+
+        # Strategy 1: Last digit might be a misread '+' operator
+        # Common low-res confusions: '+' → '0' (round shape), '+' → '4' (cross)
+        if value and len(value) >= 2 and value[-1] in ("0", "4"):
+            _dbg(f"    -> {value[:-1]}+ (digit-to-op correction)")
+            results[idx] = (value[:-1], "+")
+            continue
+
+        # Strategy 2: Retry with higher-resolution individual crop.
+        # Extract from original gray at 4x/6x upscale for better operator detection.
+        tl_r, tl_c = cages[idx][0]
+        cx2, cy2 = v_pos[tl_c], h_pos[tl_r]
+        cw2 = v_pos[tl_c + 1] - cx2
+        ch2 = h_pos[tl_r + 1] - cy2
+        found = False
+        for retry_scale in (4, 6):
+            for m2 in (2, 3, 4):
+                rx = gx + cx2 + m2
+                ry = gy + cy2 + m2
+                rw = int(cw2 * 0.95)
+                rh = int(ch2 * 0.45)
+                crop_raw = gray[ry:ry + rh, rx:rx + rw]
+                if crop_raw.size == 0 or crop_raw.shape[0] < 5:
+                    continue
+                crop_hi = cv2.resize(crop_raw, None, fx=retry_scale,
+                                     fy=retry_scale,
+                                     interpolation=cv2.INTER_CUBIC)
+                raw_hi = _ocr_crop(crop_hi)
+                m_hi = _LABEL_RE.match(raw_hi)
+                # Only accept if a real operator found (not '?')
+                if m_hi and m_hi.group(2) and m_hi.group(2) != "?":
+                    # For short values, don't accept if digits changed
+                    # (prevents '7' -> '1+' type misreads)
+                    if len(value) <= 2 and m_hi.group(1) != value:
+                        continue
+                    _dbg(f"    -> {raw_hi!r} (retry {retry_scale}x margin={m2})")
+                    results[idx] = (m_hi.group(1), m_hi.group(2))
+                    found = True
+                    break
+            if found:
+                break
+        if found:
+            continue
+
+        # Strategy 3: Detect operator from rightmost connected component.
+        # The operator sits to the right of digits; isolate and classify it.
+        crop_for_op = _extract_label_crop(
+            gray, grid_up, gx, gy, upscale,
+            cx2, cy2, cw2, ch2, margin=2,
+        )
+        if crop_for_op is not None:
+            detected_op = _detect_trailing_operator(crop_for_op)
+            if detected_op:
+                _dbg(f"    -> {value}{detected_op} (component-based op detection)")
+                results[idx] = (value, detected_op)
+
     return results
 
 
