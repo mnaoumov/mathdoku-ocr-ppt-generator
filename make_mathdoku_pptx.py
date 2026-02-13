@@ -54,7 +54,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "value": {"y_frac": 0.30, "h_frac": 0.70, "font": 52},
         "candidates": {"x_frac": 0.15, "y_frac": 0.38, "w_frac": 0.80, "h_frac": 0.60, "font": 22, "digit_margin": 12},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.35, "font": 28},
-        "solve": {"enabled": True, "left_in": 6.20, "cols": 2, "col_w_in": 2.10, "col_gap_in": 0.25, "font": 16},
+        "solve": {"enabled": True, "left_in": 6.20, "cols": 2, "col_w_in": 3.25, "col_gap_in": 0.25, "font": 16},
     },
     5: {
         "title_h_in": 0.70,
@@ -73,7 +73,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "value": {"y_frac": 0.28, "h_frac": 0.72, "font": 44},
         "candidates": {"x_frac": 0.05, "y_frac": 0.36, "w_frac": 0.88, "h_frac": 0.62, "font": 20, "digit_margin": 7},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.33, "font": 24},
-        "solve": {"enabled": True, "left_in": 6.55, "cols": 2, "col_w_in": 2.00, "col_gap_in": 0.25, "font": 16},
+        "solve": {"enabled": True, "left_in": 6.55, "cols": 2, "col_w_in": 3.10, "col_gap_in": 0.25, "font": 16},
     },
     6: {
         "title_h_in": 0.65,
@@ -92,7 +92,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "value": {"y_frac": 0.25, "h_frac": 0.75, "font": 38},
         "candidates": {"x_frac": 0.07, "y_frac": 0.33, "w_frac": 0.86, "h_frac": 0.65, "font": 19, "digit_margin": 5},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.30, "font": 22},
-        "solve": {"enabled": True, "left_in": 6.85, "cols": 2, "col_w_in": 1.90, "col_gap_in": 0.25, "font": 16},
+        "solve": {"enabled": True, "left_in": 6.85, "cols": 2, "col_w_in": 2.95, "col_gap_in": 0.25, "font": 16},
     },
     7: {
         "title_h_in": 0.55,
@@ -111,7 +111,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "value": {"y_frac": 0.23, "h_frac": 0.77, "font": 32},
         "candidates": {"x_frac": 0.08, "y_frac": 0.31, "w_frac": 0.84, "h_frac": 0.67, "font": 18, "digit_margin": 1},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.28, "font": 20},
-        "solve": {"enabled": True, "left_in": 7.05, "cols": 2, "col_w_in": 1.85, "col_gap_in": 0.25, "font": 16},
+        "solve": {"enabled": True, "left_in": 7.05, "cols": 2, "col_w_in": 2.85, "col_gap_in": 0.25, "font": 16},
     },
     8: {
         "title_h_in": 0.55,
@@ -130,7 +130,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "value": {"y_frac": 0.22, "h_frac": 0.78, "font": 30},
         "candidates": {"x_frac": 0.08, "y_frac": 0.29, "w_frac": 0.84, "h_frac": 0.69, "font": 17, "digit_margin": 1},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.26, "font": 18},
-        "solve": {"enabled": True, "left_in": 7.15, "cols": 2, "col_w_in": 1.80, "col_gap_in": 0.25, "font": 16},
+        "solve": {"enabled": True, "left_in": 7.15, "cols": 2, "col_w_in": 2.80, "col_gap_in": 0.25, "font": 16},
     },
     9: {
         "title_h_in": 0.55,
@@ -149,7 +149,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "value": {"y_frac": 0.20, "h_frac": 0.80, "font": 28},
         "candidates": {"x_frac": 0.09, "y_frac": 0.27, "w_frac": 0.88, "h_frac": 0.71, "font": 14, "digit_margin": 0},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.70, "box_h_frac": 0.24, "font": 16},
-        "solve": {"enabled": True, "left_in": 7.25, "cols": 2, "col_w_in": 1.75, "col_gap_in": 0.25, "font": 16},
+        "solve": {"enabled": True, "left_in": 7.25, "cols": 2, "col_w_in": 2.75, "col_gap_in": 0.25, "font": 16},
     },
 }
 
