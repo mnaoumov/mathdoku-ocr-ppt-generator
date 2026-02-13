@@ -487,7 +487,7 @@ Public Sub EditCellCandidates()
 
     Dim inputVal As String
     inputVal = InputBox("Candidates for cell " & cellRef & " (any order; duplicates ok):", "Mathdoku", currentDigits)
-    If Len(inputVal) = 0 Then Exit Sub ' cancel/empty -> no-op
+    If StrPtr(inputVal) = 0 Then Exit Sub ' cancel -> no-op
 
     Dim normalized As String
     normalized = NormalizeCandidatesDigits(inputVal, sz)
