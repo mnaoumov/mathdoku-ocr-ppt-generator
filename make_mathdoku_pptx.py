@@ -35,6 +35,7 @@ FOOTER_TEXT = "@mnaoumov"
 # - grid_*_in / solve.*_in are absolute inches
 # - axis_*_offset_frac are fractions of cell size
 # - candidates.*_frac / cage.*_frac are fractions of cell size
+# - candidates.digit_margin is extra character spacing in pt (Font.Spacing)
 LAYOUT_PROFILES: dict[int, dict] = {
     4: {
         "title_h_in": 0.85,
@@ -51,7 +52,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.42,
         "axis_side_offset": 0.36,
         "value": {"y_frac": 0.30, "h_frac": 0.70, "font": 52},
-        "candidates": {"x_frac": 0.15, "y_frac": 0.38, "w_frac": 0.80, "h_frac": 0.60, "font": 22},
+        "candidates": {"x_frac": 0.15, "y_frac": 0.38, "w_frac": 0.80, "h_frac": 0.60, "font": 22, "digit_margin": 12},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.35, "font": 28},
         "solve": {"enabled": True, "left_in": 6.20, "cols": 2, "col_w_in": 2.10, "col_gap_in": 0.25, "font": 16},
     },
@@ -70,7 +71,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.45,
         "axis_side_offset": 0.38,
         "value": {"y_frac": 0.28, "h_frac": 0.72, "font": 44},
-        "candidates": {"x_frac": 0.05, "y_frac": 0.36, "w_frac": 0.88, "h_frac": 0.62, "font": 18},
+        "candidates": {"x_frac": 0.05, "y_frac": 0.36, "w_frac": 0.88, "h_frac": 0.62, "font": 20, "digit_margin": 7},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.33, "font": 24},
         "solve": {"enabled": True, "left_in": 6.55, "cols": 2, "col_w_in": 2.00, "col_gap_in": 0.25, "font": 16},
     },
@@ -89,7 +90,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.41,
         "axis_side_offset": 0.34,
         "value": {"y_frac": 0.25, "h_frac": 0.75, "font": 38},
-        "candidates": {"x_frac": 0.07, "y_frac": 0.33, "w_frac": 0.86, "h_frac": 0.65, "font": 15},
+        "candidates": {"x_frac": 0.07, "y_frac": 0.33, "w_frac": 0.86, "h_frac": 0.65, "font": 19, "digit_margin": 5},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.30, "font": 22},
         "solve": {"enabled": True, "left_in": 6.85, "cols": 2, "col_w_in": 1.90, "col_gap_in": 0.25, "font": 16},
     },
@@ -108,7 +109,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
         "value": {"y_frac": 0.23, "h_frac": 0.77, "font": 32},
-        "candidates": {"x_frac": 0.08, "y_frac": 0.31, "w_frac": 0.84, "h_frac": 0.67, "font": 12},
+        "candidates": {"x_frac": 0.08, "y_frac": 0.31, "w_frac": 0.84, "h_frac": 0.67, "font": 18, "digit_margin": 1},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.28, "font": 20},
         "solve": {"enabled": True, "left_in": 7.05, "cols": 2, "col_w_in": 1.85, "col_gap_in": 0.25, "font": 16},
     },
@@ -127,7 +128,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
         "value": {"y_frac": 0.22, "h_frac": 0.78, "font": 30},
-        "candidates": {"x_frac": 0.08, "y_frac": 0.29, "w_frac": 0.84, "h_frac": 0.69, "font": 10},
+        "candidates": {"x_frac": 0.08, "y_frac": 0.29, "w_frac": 0.84, "h_frac": 0.69, "font": 17, "digit_margin": 1},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.65, "box_h_frac": 0.26, "font": 18},
         "solve": {"enabled": True, "left_in": 7.15, "cols": 2, "col_w_in": 1.80, "col_gap_in": 0.25, "font": 16},
     },
@@ -146,7 +147,7 @@ LAYOUT_PROFILES: dict[int, dict] = {
         "axis_top_offset": 0.49,
         "axis_side_offset": 0.42,
         "value": {"y_frac": 0.20, "h_frac": 0.80, "font": 28},
-        "candidates": {"x_frac": 0.09, "y_frac": 0.27, "w_frac": 0.88, "h_frac": 0.71, "font": 7},
+        "candidates": {"x_frac": 0.09, "y_frac": 0.27, "w_frac": 0.88, "h_frac": 0.71, "font": 14, "digit_margin": 0},
         "cage": {"inset_x_frac": 0.07, "inset_y_frac": 0.05, "box_w_frac": 0.70, "box_h_frac": 0.24, "font": 16},
         "solve": {"enabled": True, "left_in": 7.25, "cols": 2, "col_w_in": 1.75, "col_gap_in": 0.25, "font": 16},
     },
@@ -251,7 +252,7 @@ def _add_footer(slide, *, text: str) -> None:
     _font(p.runs[0], size=14, bold=False, rgb=RGBColor(110, 120, 135))
 
 
-def _add_hidden_meta(slide, *, puzzle_id: str, n: int, operations: bool) -> None:
+def _add_hidden_meta(slide, *, puzzle_id: str, n: int, operations: bool, digit_margin: int) -> None:
     """
     Store metadata off-slide for VBA.
     Must NOT be locked for selection, or VBA access may error.
@@ -269,6 +270,7 @@ def _add_hidden_meta(slide, *, puzzle_id: str, n: int, operations: bool) -> None
         f"id: {puzzle_id}\n"
         f"size: {n}\n"
         f"operations: {str(bool(operations)).lower()}\n"
+        f"digit_margin: {digit_margin}\n"
     )
     p.alignment = PP_ALIGN.LEFT
     if not p.runs:
@@ -358,6 +360,7 @@ def _add_cell_candidates_box(
     name: str,
     font_size: int,
     rgb: RGBColor,
+    digit_margin: int = 0,
 ) -> None:
     box = slide.shapes.add_textbox(Inches(left), Inches(top), Inches(width), Inches(height))
     box.name = name
@@ -377,7 +380,10 @@ def _add_cell_candidates_box(
     p = tf.paragraphs[0]
     p.text = " "
     p.alignment = PP_ALIGN.LEFT
-    _font(p.runs[0], name="Consolas", size=font_size, bold=False, rgb=rgb)
+    run = p.runs[0]
+    _font(run, name="Consolas", size=font_size, bold=False, rgb=rgb)
+    if digit_margin:
+        run.font._element.set("spc", str(int(digit_margin * 100)))
 
     _lock_shape(box, move=True, resize=True, rotate=True, select=False, text_edit=False)
 
@@ -762,7 +768,9 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     layout = _compute_layout(n, solve_enabled=True, solve_cols=2, solve_min_col_w=1.0)
 
     _add_title(slide, title=title, meta=meta, n=n)
-    _add_hidden_meta(slide, puzzle_id=puzzle_id, n=n, operations=bool(operations))
+    cand_prof = prof["candidates"]
+    digit_margin = int(cand_prof.get("digit_margin", 0))
+    _add_hidden_meta(slide, puzzle_id=puzzle_id, n=n, operations=bool(operations), digit_margin=digit_margin)
 
     grid_left = float(layout["grid_left"])
     grid_top = float(layout["grid_top"])
@@ -815,6 +823,7 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
                 name=f"CANDIDATES_{cell_ref}",
                 font_size=cand_font,
                 rgb=cand_rgb,
+                digit_margin=digit_margin,
             )
 
     # Borders

@@ -19,7 +19,7 @@ Private Sub ApplyValueStyle(ByVal shp As Shape, ByVal fontName As String, ByVal 
     End With
 End Sub
 
-Private Sub ApplyCandidatesStyle(ByVal shp As Shape, ByVal fontName As String, ByVal fontSize As Single, ByVal fontColorRGB As Long)
+Private Sub ApplyCandidatesStyle(ByVal shp As Shape, ByVal fontName As String, ByVal fontSize As Single, ByVal fontColorRGB As Long, ByVal digitMargin As Single)
     With shp.TextFrame.TextRange
         .ParagraphFormat.Alignment = ppAlignLeft
         .Font.Name = fontName
@@ -27,6 +27,7 @@ Private Sub ApplyCandidatesStyle(ByVal shp As Shape, ByVal fontName As String, B
         .Font.Color.RGB = fontColorRGB
         .Font.Bold = msoFalse
     End With
+    shp.TextFrame2.TextRange.Font.Spacing = digitMargin
 End Sub
 
 Private Function IsDigitInRowOrCol(ByVal sld As Slide, ByVal r As Long, ByVal c As Long, ByVal digit As Long, ByVal gridSize As Long) As Boolean
@@ -76,7 +77,7 @@ Private Function IsDigitInRowOrCol(ByVal sld As Slide, ByVal r As Long, ByVal c 
     IsDigitInRowOrCol = False
 End Function
 
-Private Sub ApplyCandidatesWithConflictHighlight(ByVal shp As Shape, ByVal sld As Slide, ByVal r As Long, ByVal c As Long, ByVal gridSize As Long, ByVal fontName As String, ByVal fontSize As Single, ByVal normalColor As Long)
+Private Sub ApplyCandidatesWithConflictHighlight(ByVal shp As Shape, ByVal sld As Slide, ByVal r As Long, ByVal c As Long, ByVal gridSize As Long, ByVal fontName As String, ByVal fontSize As Single, ByVal normalColor As Long, ByVal digitMargin As Single)
     ' Apply formatting with red color for impossible candidates
     Dim txt As String, i As Long, ch As String, digit As Long
     Dim conflictColor As Long
@@ -92,6 +93,7 @@ Private Sub ApplyCandidatesWithConflictHighlight(ByVal shp As Shape, ByVal sld A
         .Font.Color.RGB = normalColor
         .Font.Bold = msoFalse
     End With
+    shp.TextFrame2.TextRange.Font.Spacing = digitMargin
 
     ' Now color individual digits that are conflicts
     For i = 1 To Len(txt)
@@ -126,40 +128,56 @@ End Sub
 ' Note: PowerPoint can't auto-format on every keystroke without an add-in.
 ' This is designed as: type freely -> press the hotkey.
 
-Private Function GetGridSizeFromSlide(ByVal sld As Slide) As Long
+Private Function GetMetaValue(ByVal sld As Slide, ByVal key As String, Optional ByVal defaultValue As String = "") As String
+    ' Read a "key: value" line from the MATHDOKU_META shape.
     Dim meta As Shape
     Set meta = GetShapeByName(sld, "MATHDOKU_META")
     If meta Is Nothing Then
-        MsgBox "Missing required shape 'MATHDOKU_META'. Re-generate the slide/template.", vbExclamation, "Mathdoku"
-        GetGridSizeFromSlide = 0
+        GetMetaValue = defaultValue
         Exit Function
     End If
-
     If meta.HasTextFrame = msoFalse Or meta.TextFrame.HasText = msoFalse Then
-        MsgBox "Shape 'MATHDOKU_META' has no text. Re-generate the slide/template.", vbExclamation, "Mathdoku"
-        GetGridSizeFromSlide = 0
+        GetMetaValue = defaultValue
         Exit Function
     End If
 
     Dim t As String, lines() As String, i As Long, ln As String
+    Dim prefix As String
+    prefix = LCase$(key) & ":"
     t = meta.TextFrame.TextRange.Text
-    ' PowerPoint often uses Vertical Tab (Chr(11)) as a line separator.
     t = Replace(t, Chr$(11), vbLf)
     t = Replace(t, vbLf, vbCrLf)
     lines = Split(t, vbCrLf)
     For i = LBound(lines) To UBound(lines)
         ln = Trim$(lines(i))
-        If LCase$(Left$(ln, 5)) = "size:" Then
-            ln = Trim$(Mid$(ln, 6))
-            If IsNumeric(ln) Then
-                GetGridSizeFromSlide = CLng(ln)
-                Exit Function
-            End If
+        If LCase$(Left$(ln, Len(prefix))) = prefix Then
+            GetMetaValue = Trim$(Mid$(ln, Len(prefix) + 1))
+            Exit Function
         End If
     Next i
 
-    MsgBox "Shape 'MATHDOKU_META' is missing a valid 'size: N' line.", vbExclamation, "Mathdoku"
-    GetGridSizeFromSlide = 0
+    GetMetaValue = defaultValue
+End Function
+
+Private Function GetGridSizeFromSlide(ByVal sld As Slide) As Long
+    Dim v As String
+    v = GetMetaValue(sld, "size")
+    If IsNumeric(v) And Len(v) > 0 Then
+        GetGridSizeFromSlide = CLng(v)
+    Else
+        MsgBox "Missing or invalid 'size' in MATHDOKU_META. Re-generate the slide/template.", vbExclamation, "Mathdoku"
+        GetGridSizeFromSlide = 0
+    End If
+End Function
+
+Private Function GetDigitMarginFromSlide(ByVal sld As Slide) As Single
+    Dim v As String
+    v = GetMetaValue(sld, "digit_margin", "0")
+    If IsNumeric(v) Then
+        GetDigitMarginFromSlide = CSng(v)
+    Else
+        GetDigitMarginFromSlide = 0
+    End If
 End Function
 
 Private Function DigitsOnly(ByVal text As String) As String
@@ -175,10 +193,8 @@ Private Function DigitsOnly(ByVal text As String) As String
 End Function
 
 Private Function FormatLikeApp(ByVal digits As String, ByVal gridSize As Long) As String
-    ' For size N, app-like candidates are split across 2 lines:
-    '   line1: ceil(N/2) digits
-    '   line2: remaining digits
-    ' Digits are separated by a single space for consistent placement.
+    ' Split across 2 lines: ceil(N/2) digits on line 1, rest on line 2.
+    ' Spacing between digits is handled by Font.Spacing (digit_margin in metadata).
 
     Dim perLine As Long
     If gridSize <= 0 Then gridSize = 9
@@ -188,25 +204,11 @@ Private Function FormatLikeApp(ByVal digits As String, ByVal gridSize As Long) A
     Dim d As String
     d = digits
     If Len(d) <= perLine Then
-        FormatLikeApp = JoinDigitsWithSpaces(d)
+        FormatLikeApp = d
         Exit Function
     End If
 
-    Dim line1 As String, line2 As String
-    line1 = Left$(d, perLine)
-    line2 = Mid$(d, perLine + 1)
-
-    FormatLikeApp = JoinDigitsWithSpaces(line1) & vbCrLf & JoinDigitsWithSpaces(line2)
-End Function
-
-Private Function JoinDigitsWithSpaces(ByVal digits As String) As String
-    Dim i As Long, out As String
-    out = ""
-    For i = 1 To Len(digits)
-        out = out & Mid$(digits, i, 1)
-        If i < Len(digits) Then out = out & " "
-    Next i
-    JoinDigitsWithSpaces = out
+    FormatLikeApp = Left$(d, perLine) & vbCrLf & Mid$(d, perLine + 1)
 End Function
 
 Private Function ActiveSlide() As Slide
@@ -358,7 +360,7 @@ Private Sub RemoveCandidateDigit(ByVal sld As Slide, ByVal r As Long, ByVal c As
     Else
         shp.TextFrame.TextRange.Text = FormatLikeApp(out, gridSize)
     End If
-    ApplyCandidatesStyle shp, candFontName, candFontSize, candFontColor
+    ApplyCandidatesStyle shp, candFontName, candFontSize, candFontColor, GetDigitMarginFromSlide(sld)
 End Sub
 
 Public Sub EnterFinalValue()
@@ -430,7 +432,7 @@ Public Sub EnterFinalValue()
     ' Clear candidates in this cell
     If Not candShp Is Nothing Then
         candShp.TextFrame.TextRange.Text = " "
-        ApplyCandidatesStyle candShp, candFontName, candFontSize, candFontColor
+        ApplyCandidatesStyle candShp, candFontName, candFontSize, candFontColor, GetDigitMarginFromSlide(sld)
     End If
 
     ' Remove this candidate from same row and column
@@ -492,12 +494,15 @@ Public Sub EditCellCandidates()
 
     Application.StartNewUndoEntry
 
+    Dim digitMargin As Single
+    digitMargin = GetDigitMarginFromSlide(sld)
+
     If Len(normalized) = 0 Then
         candShp.TextFrame.TextRange.Text = " "
-        ApplyCandidatesStyle candShp, candFontName, candFontSize, candFontColor
+        ApplyCandidatesStyle candShp, candFontName, candFontSize, candFontColor, digitMargin
     Else
         candShp.TextFrame.TextRange.Text = FormatLikeApp(normalized, sz)
-        ApplyCandidatesWithConflictHighlight candShp, sld, r, c, sz, candFontName, candFontSize, candFontColor
+        ApplyCandidatesWithConflictHighlight candShp, sld, r, c, sz, candFontName, candFontSize, candFontColor, digitMargin
     End If
 
     ' Clear the final value when setting candidates
