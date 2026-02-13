@@ -80,7 +80,7 @@ Private Sub ApplyCandidatesWithConflictHighlight(ByVal shp As Shape, ByVal sld A
     ' Apply formatting with red color for impossible candidates
     Dim txt As String, i As Long, ch As String, digit As Long
     Dim conflictColor As Long
-    conflictColor = RGB(220, 50, 50) ' Red for conflicts
+    conflictColor = RGB(255, 0, 0) ' Red to match app
 
     txt = shp.TextFrame.TextRange.Text
 
