@@ -8,6 +8,9 @@ dependencies = [
     "numpy",
     "pytesseract",
     "pyyaml",
+    "pytest>=9.0.2",
+    "python-pptx>=1.0.2",
+    "pywin32>=311",
 ]
 
 [project.optional-dependencies]
