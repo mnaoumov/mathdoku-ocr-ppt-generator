@@ -771,6 +771,7 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     _add_title(slide, title=title, meta=meta, n=n)
     cand_prof = prof["candidates"]
     digit_margin = int(cand_prof.get("digit_margin", 0))
+    cand_rgb: RGBColor = DEFAULT_CANDIDATES_DARK_RED
     _add_hidden_meta(slide, puzzle_id=puzzle_id, n=n, operations=bool(operations), digit_margin=digit_margin, cand_color=cand_rgb)
 
     grid_left = float(layout["grid_left"])
@@ -783,7 +784,6 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     value_font = int(val_prof["font"])
     val_y_frac = float(val_prof["y_frac"])
     val_h_frac = float(val_prof["h_frac"])
-    cand_rgb: RGBColor = DEFAULT_CANDIDATES_DARK_RED
     thin_pt = float(prof["thin_pt"])
     thick_pt = float(prof["thick_pt"])
 
