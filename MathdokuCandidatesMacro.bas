@@ -180,21 +180,7 @@ Private Function GetDigitMarginFromSlide(ByVal sld As Slide) As Single
     End If
 End Function
 
-Private Function GetCandColorFromSlide(ByVal sld As Slide) As Long
-    Dim v As String
-    v = GetMetaValue(sld, "cand_color", "")
-    If Len(v) = 6 Then
-        ' Stored as RRGGBB hex; VBA RGB() takes decimal components
-        Dim rr As Long, gg As Long, bb As Long
-        rr = CLng("&H" & Mid$(v, 1, 2))
-        gg = CLng("&H" & Mid$(v, 3, 2))
-        bb = CLng("&H" & Mid$(v, 5, 2))
-        GetCandColorFromSlide = RGB(rr, gg, bb)
-    Else
-        ' Fallback: dark red matching DEFAULT_CANDIDATES_DARK_RED
-        GetCandColorFromSlide = RGB(139, 0, 0)
-    End If
-End Function
+Private Const CAND_COLOR As Long = 139 + 0 * 256 + 0 * 65536  ' RGB(139, 0, 0) dark red
 
 Private Function DigitsOnly(ByVal text As String) As String
     Dim i As Long, ch As String, out As String
@@ -381,7 +367,7 @@ Private Sub RemoveCandidateDigit(ByVal sld As Slide, ByVal r As Long, ByVal c As
     Dim candFontName As String, candFontSize As Single, candFontColor As Long
     candFontName = shp.TextFrame.TextRange.Font.Name
     candFontSize = shp.TextFrame.TextRange.Font.Size
-    candFontColor = GetCandColorFromSlide(sld)
+    candFontColor = CAND_COLOR
 
     Dim currentDigits As String
     currentDigits = NormalizeCandidatesDigits(shp.TextFrame.TextRange.Text, gridSize)
@@ -434,7 +420,7 @@ Public Sub EnterFinalValue()
     Dim candFontName As String, candFontSize As Single, candFontColor As Long
     candFontName = candShp.TextFrame.TextRange.Font.Name
     candFontSize = candShp.TextFrame.TextRange.Font.Size
-    candFontColor = GetCandColorFromSlide(sld)
+    candFontColor = CAND_COLOR
 
     Dim currentValue As String
     currentValue = ""
@@ -513,7 +499,7 @@ Public Sub EditCellCandidates()
     Dim candFontName As String, candFontSize As Single, candFontColor As Long
     candFontName = candShp.TextFrame.TextRange.Font.Name
     candFontSize = candShp.TextFrame.TextRange.Font.Size
-    candFontColor = GetCandColorFromSlide(sld)
+    candFontColor = CAND_COLOR
 
     Dim valueFontName As String, valueFontSize As Single, valueFontColor As Long, valueBold As MsoTriState
     valueFontName = valueShp.TextFrame.TextRange.Font.Name

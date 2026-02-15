@@ -252,7 +252,7 @@ def _add_footer(slide, *, text: str) -> None:
     _font(p.runs[0], size=14, bold=False, rgb=RGBColor(110, 120, 135))
 
 
-def _add_hidden_meta(slide, *, puzzle_id: str, n: int, operations: bool, digit_margin: int, cand_color: RGBColor) -> None:
+def _add_hidden_meta(slide, *, puzzle_id: str, n: int, operations: bool, digit_margin: int) -> None:
     """
     Store metadata off-slide for VBA.
     Must NOT be locked for selection, or VBA access may error.
@@ -271,7 +271,6 @@ def _add_hidden_meta(slide, *, puzzle_id: str, n: int, operations: bool, digit_m
         f"size: {n}\n"
         f"operations: {str(bool(operations)).lower()}\n"
         f"digit_margin: {digit_margin}\n"
-        f"cand_color: {int(cand_color[0]):02X}{int(cand_color[1]):02X}{int(cand_color[2]):02X}\n"
     )
     p.alignment = PP_ALIGN.LEFT
     if not p.runs:
@@ -771,8 +770,7 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
     _add_title(slide, title=title, meta=meta, n=n)
     cand_prof = prof["candidates"]
     digit_margin = int(cand_prof.get("digit_margin", 0))
-    cand_rgb: RGBColor = DEFAULT_CANDIDATES_DARK_RED
-    _add_hidden_meta(slide, puzzle_id=puzzle_id, n=n, operations=bool(operations), digit_margin=digit_margin, cand_color=cand_rgb)
+    _add_hidden_meta(slide, puzzle_id=puzzle_id, n=n, operations=bool(operations), digit_margin=digit_margin)
 
     grid_left = float(layout["grid_left"])
     grid_top = float(layout["grid_top"])
@@ -789,6 +787,7 @@ def build_pptx(*, spec_path: Path, spec: dict) -> Path:
 
     cand_prof = prof["candidates"]
     cand_font = int(cand_prof["font"])
+    cand_rgb: RGBColor = DEFAULT_CANDIDATES_DARK_RED
 
     # Candidates box placement (precalculated per-size).
     cand_left = float(cand_prof["x_frac"]) * cell_w
