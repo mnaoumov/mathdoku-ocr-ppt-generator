@@ -1,0 +1,23 @@
+id: 20
+size: 5
+difficulty: 3
+operations: false
+cages:
+- cells: [A1, A2, A3]
+  value: 30
+- cells: [B1, C1, B2, C2]
+  value: 15
+- cells: [D1, D2, E2]
+  value: 40
+- cells: [E1]
+  value: 4
+- cells: [B3, C3, D3, E3]
+  value: 10
+- cells: [A4, B4, A5]
+  value: 10
+- cells: [C4, D4, D5, E5]
+  value: 60
+- cells: [E4]
+  value: 2
+- cells: [B5, C5]
+  value: 1
