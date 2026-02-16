@@ -1,0 +1,30 @@
+size: 6
+difficulty: 3
+operations: false
+cages:
+- cells: [A1, A2, A3, A4]
+  value: 48
+- cells: [B1, C1, B2]
+  value: 10
+- cells: [D1, D2, E2, D3]
+  value: 360
+- cells: [E1, F1]
+  value: 1
+- cells: [C2, C3]
+  value: 5
+- cells: [F2, F3]
+  value: 11
+- cells: [B3, B4, A5, B5]
+  value: 75
+- cells: [E3, D4, E4, F4]
+  value: 24
+- cells: [C4, C5, B6, C6]
+  value: 288
+- cells: [D5, D6]
+  value: 7
+- cells: [E5, F5, E6]
+  value: 8
+- cells: [A6]
+  value: 3
+- cells: [F6]
+  value: 2

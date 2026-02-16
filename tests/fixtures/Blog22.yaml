@@ -1,0 +1,20 @@
+size: 5
+difficulty: 5
+operations: true
+cages:
+- cells: [A1, B1]
+  value: 4
+- cells: [C1, A2, B2, C2, D2, A3]
+  value: 240
+- cells: [D1, E1]
+  value: 20
+- cells: [E2]
+  value: 2
+- cells: [B3, D3, B4, C4, C5]
+  value: 360
+- cells: [C3]
+  value: 1
+- cells: [E3, E4, C5, D5, E5]
+  value: 18
+- cells: [A4, A5, B5]
+  value: 7

@@ -1,0 +1,51 @@
+size: 7
+difficulty: 4
+operations: true
+cages:
+- cells: [A1, A2, A3]
+  value: 12
+  op: +
+- cells: [B1, C1, D1, D2]
+  value: 20
+  op: +
+- cells: [E1, E2]
+  value: 4
+  op: x
+- cells: [F1, G1]
+  value: 12
+  op: +
+- cells: [B2, C2, B3]
+  value: 10
+  op: +
+- cells: [F2, G2, F3, F4, G4]
+  value: 15
+  op: +
+- cells: [C3, D3, D4]
+  value: 12
+  op: +
+- cells: [E3, E4, D5, E5, F5]
+  value: 3150
+  op: x
+- cells: [G3]
+  value: 6
+- cells: [A4, B4, B5]
+  value: 56
+  op: x
+- cells: [C4, C5, C6, C7, D7]
+  value: 540
+  op: x
+- cells: [A5, A6, B6]
+  value: 15
+  op: x
+- cells: [G5, G6]
+  value: 2
+  op: /
+- cells: [D6, E6]
+  value: 14
+  op: x
+- cells: [F6, E7, F7, G7]
+  value: 72
+  op: x
+- cells: [A7, B7]
+  value: 7
+  op: x
