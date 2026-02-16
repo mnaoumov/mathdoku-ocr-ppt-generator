@@ -1,0 +1,40 @@
+{
+  "version": "0.2",
+  "ignorePaths": [
+    "**/*.js",
+    "credentials.json",
+    "token.json",
+    "node_modules/"
+  ],
+  "words": [
+    "addopts",
+    "appsscript",
+    "binarize",
+    "cand",
+    "cands",
+    "cnts",
+    "creds",
+    "gaxios",
+    "googleapiclient",
+    "imread",
+    "imwrite",
+    "LOCALAPPDATA",
+    "mathdoku",
+    "officedocument",
+    "openxmlformats",
+    "mnaoumov",
+    "numpy",
+    "OTSU",
+    "pyproject",
+    "pytesseract",
+    "pytest",
+    "pyyaml",
+    "Segoe",
+    "strikethrough",
+    "strikethroughs",
+    "tessedit",
+    "Tesseract",
+    "presentationml",
+    "testpaths","Consolas","unitless"
+  ]
+}

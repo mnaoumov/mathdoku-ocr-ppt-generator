@@ -1,9 +1,13 @@
-*.pptx
 __pycache__
-*.pptm
-*.yaml
-*.png
 
-!tests/fixtures/*.jpg
-!tests/fixtures/*.png
-!tests/fixtures/*.yaml
+credentials.json
+token.json
+
+# Node
+node_modules/
+package-lock.json
+
+# Compiled Apps Script (source is .ts)
+apps-script/*.js
+
+*.pptm

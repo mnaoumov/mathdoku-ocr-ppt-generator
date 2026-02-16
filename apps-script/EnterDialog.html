@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: Segoe UI, Arial, sans-serif; margin: 12px; }
+    label { display: block; margin-bottom: 4px; font-size: 13px; color: #333; }
+    input[type=text] {
+      width: 100%; box-sizing: border-box; padding: 6px 8px;
+      font-size: 14px; border: 1px solid #ccc; border-radius: 3px;
+      margin-bottom: 12px;
+    }
+    input[type=text]:focus { border-color: #4285f4; outline: none; }
+    .buttons { text-align: right; margin-top: 8px; }
+    button {
+      padding: 6px 20px; font-size: 13px; border: 1px solid #ccc;
+      border-radius: 3px; cursor: pointer; margin-left: 8px;
+    }
+    button.primary {
+      background: #4285f4; color: white; border-color: #4285f4;
+    }
+  </style>
+</head>
+<body>
+  <label for="cells">Cells (e.g., A1 B2 or @A1 for cage):</label>
+  <input type="text" id="cells" autofocus>
+
+  <label for="ops">Operations (=N, +digits, -digits):</label>
+  <input type="text" id="ops">
+
+  <div class="buttons">
+    <button onclick="google.script.host.close()">Cancel</button>
+    <button class="primary" onclick="submit()">OK</button>
+  </div>
+
+  <script>
+    var cellsInput = document.getElementById("cells");
+    var opsInput = document.getElementById("ops");
+
+    cellsInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") { opsInput.focus(); e.preventDefault(); }
+      if (e.key === "Escape") { google.script.host.close(); }
+    });
+    opsInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") { submit(); e.preventDefault(); }
+      if (e.key === "Escape") { google.script.host.close(); }
+    });
+
+    function submit() {
+      var cells = cellsInput.value.trim();
+      var ops = opsInput.value.trim();
+      if (!cells || !ops) return;
+      google.script.run
+        .withSuccessHandler(function() { google.script.host.close(); })
+        .withFailureHandler(function(err) { alert(err.message); })
+        .enter(cells, ops);
+    }
+  </script>
+</body>
+</html>

@@ -2,10 +2,8 @@
 OCR tool for Mathdoku puzzles: screenshot -> YAML spec.
 
 Usage:
-    python ocr_mathdoku.py Blog09.png              -> Blog09.yaml
-    python ocr_mathdoku.py Blog09.png --size 4     -> override grid size
-    python ocr_mathdoku.py Blog09.png -o out.yaml  -> custom output
-    python ocr_mathdoku.py Blog09.png --debug       -> save debug images
+    python ocr_mathdoku.py Blog09.png          -> Blog09.yaml
+    python ocr_mathdoku.py Blog09.png --debug  -> save debug images
 
 Requirements:
     pip install opencv-python numpy pytesseract pyyaml
@@ -926,8 +924,6 @@ def ocr_mathdoku(
     img_path: Path,
     *,
     n: int | None = None,
-    puzzle_id: str | None = None,
-    difficulty: int | None = None,
 ) -> dict:
     img = cv2.imread(str(img_path))
     if img is None:
@@ -972,20 +968,10 @@ def ocr_mathdoku(
         cages_data.append(entry)
         print(f"  {refs}: {value}{op or ''}")
 
-    if puzzle_id is None:
-        stem = img_path.stem
-        m = re.search(r"\d+", stem)
-        puzzle_id = m.group(0) if m else stem
-
-    result: dict = {"id": puzzle_id, "size": n}
-    result["difficulty"] = difficulty if difficulty is not None else "?"
+    result: dict = {"size": n}
+    result["difficulty"] = "?"
     result["operations"] = has_ops
     result["cages"] = cages_data
-
-    try:
-        result["id"] = int(result["id"])
-    except (ValueError, TypeError):
-        pass
 
     return result
 
@@ -994,11 +980,6 @@ def main() -> None:
     global _DEBUG
     ap = argparse.ArgumentParser(description="OCR a Mathdoku screenshot to YAML")
     ap.add_argument("image", help="puzzle screenshot (PNG, JPG, ...)")
-    ap.add_argument("-o", "--output", help="output YAML (default: <stem>.yaml)")
-    ap.add_argument("--size", type=int, choices=range(4, 10), metavar="N",
-                    help="grid size 4-9 (auto-detected if omitted)")
-    ap.add_argument("--id", help="puzzle ID (default: filename stem)")
-    ap.add_argument("--difficulty", type=int, help="difficulty level")
     ap.add_argument("--debug", action="store_true", help="save debug images and info")
     args = ap.parse_args()
 
@@ -1009,8 +990,8 @@ def main() -> None:
         print(f"Error: {path} not found", file=sys.stderr)
         raise SystemExit(1)
 
-    out = Path(args.output) if args.output else path.with_suffix(".yaml")
-    result = ocr_mathdoku(path, n=args.size, puzzle_id=args.id, difficulty=args.difficulty)
+    out = path.with_suffix(".yaml")
+    result = ocr_mathdoku(path)
 
     with open(out, "w", encoding="utf-8") as f:
         yaml.dump(result, f, default_flow_style=False, allow_unicode=True, sort_keys=False)

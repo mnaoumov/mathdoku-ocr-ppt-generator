@@ -1,6 +1,5 @@
-id: 4
 size: 9
-difficulty: '?'
+difficulty: 5
 operations: true
 cages:
 - cells: [A1, B1, A2, A3]

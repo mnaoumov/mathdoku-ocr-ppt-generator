@@ -11,7 +11,7 @@ from pathlib import Path
 
 import yaml
 
-from ocr_mathdoku import ocr_mathdoku
+from ocr.ocr_mathdoku import ocr_mathdoku
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -40,7 +40,7 @@ def load_expected(yaml_path: Path) -> dict:
 
 
 def compare_puzzles(actual: dict, expected: dict) -> list[str]:
-    """Compare two puzzle dicts and return list of differences (excludes difficulty)."""
+    """Compare two puzzle dicts and return list of differences."""
     errors = []
 
     # Compare size
@@ -100,7 +100,6 @@ def test_ocr_fixture(name: str, img_path: Path, yaml_path: Path):
     # Load expected
     expected = load_expected(yaml_path)
 
-    # Compare (excludes difficulty)
     errors = compare_puzzles(actual, expected)
 
     if errors:
