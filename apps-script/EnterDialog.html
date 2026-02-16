@@ -11,6 +11,7 @@
       margin-bottom: 12px;
     }
     input[type=text]:focus { border-color: #4285f4; outline: none; }
+    .hint { font-size: 11px; color: #888; margin-bottom: 12px; }
     .buttons { text-align: right; margin-top: 8px; }
     button {
       padding: 6px 20px; font-size: 13px; border: 1px solid #ccc;
@@ -22,11 +23,9 @@
   </style>
 </head>
 <body>
-  <label for="cells">Cells (e.g., A1 B2 or @A1 for cage):</label>
-  <input type="text" id="cells" autofocus>
-
-  <label for="ops">Operations (=N, +digits, -digits):</label>
-  <input type="text" id="ops">
+  <label for="cmd">Commands:</label>
+  <input type="text" id="cmd" autofocus placeholder="A1:=1 (B2 C3):234 @D4:-567">
+  <div class="hint">cell:op &mdash; =N value, 123 candidates, -123 strike. @A1 expands cage.</div>
 
   <div class="buttons">
     <button onclick="google.script.host.close()">Cancel</button>
@@ -34,26 +33,20 @@
   </div>
 
   <script>
-    var cellsInput = document.getElementById("cells");
-    var opsInput = document.getElementById("ops");
+    var cmdInput = document.getElementById("cmd");
 
-    cellsInput.addEventListener("keydown", function(e) {
-      if (e.key === "Enter") { opsInput.focus(); e.preventDefault(); }
-      if (e.key === "Escape") { google.script.host.close(); }
-    });
-    opsInput.addEventListener("keydown", function(e) {
+    cmdInput.addEventListener("keydown", function(e) {
       if (e.key === "Enter") { submit(); e.preventDefault(); }
       if (e.key === "Escape") { google.script.host.close(); }
     });
 
     function submit() {
-      var cells = cellsInput.value.trim();
-      var ops = opsInput.value.trim();
-      if (!cells || !ops) return;
+      var cmd = cmdInput.value.trim();
+      if (!cmd) return;
       google.script.run
         .withSuccessHandler(function() { google.script.host.close(); })
         .withFailureHandler(function(err) { alert(err.message); })
-        .enter(cells, ops);
+        .enter(cmd);
     }
   </script>
 </body>

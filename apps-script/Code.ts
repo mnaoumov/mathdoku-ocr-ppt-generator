@@ -6,22 +6,6 @@
 
 // ── Assert helpers ──────────────────────────────────────────────────────────
 
-function assertNonNullable<T>(value: T, errorOrMessage?: Error | string): asserts value is NonNullable<T> {
-  if (value !== null && value !== undefined) {
-    return;
-  }
-  errorOrMessage ??= value === null ? 'Value is null' : 'Value is undefined';
-  const error = typeof errorOrMessage === 'string' ? new Error(errorOrMessage) : errorOrMessage;
-  throw error;
-}
-
-function ensureNonNullable<T>(value: T, errorOrMessage?: Error | string): NonNullable<T> {
-  assertNonNullable(value, errorOrMessage);
-  return value;
-}
-
-// ── Interfaces ─────────────────────────────────────────────────────────────
-
 interface Cage {
   cells: string[];
   label?: string;
@@ -37,6 +21,8 @@ interface CageProfile {
   insetYFrac: number;
 }
 
+// ── Interfaces ─────────────────────────────────────────────────────────────
+
 interface CandidatesProfile {
   digitMargin: number;
   font: number;
@@ -49,6 +35,11 @@ interface CandidatesProfile {
 interface CellRef {
   c: number;
   r: number;
+}
+
+interface GridBoundaries {
+  horizontalBounds: boolean[][];
+  verticalBounds: boolean[][];
 }
 
 interface LayoutProfile {
@@ -97,6 +88,20 @@ interface ValueProfile {
   font: number;
   hFrac: number;
   yFrac: number;
+}
+
+function assertNonNullable<T>(value: T, errorOrMessage?: Error | string): asserts value is NonNullable<T> {
+  if (value !== null && value !== undefined) {
+    return;
+  }
+  errorOrMessage ??= value === null ? 'Value is null' : 'Value is undefined';
+  const error = typeof errorOrMessage === 'string' ? new Error(errorOrMessage) : errorOrMessage;
+  throw error;
+}
+
+function ensureNonNullable<T>(value: T, errorOrMessage?: Error | string): NonNullable<T> {
+  assertNonNullable(value, errorOrMessage);
+  return value;
 }
 
 // ── Colors ──────────────────────────────────────────────────────────────────
@@ -209,6 +214,35 @@ function cellRefA1(r: number, c: number): string {
  */
 function colorToHex(color: GoogleAppsScript.Slides.Color): string {
   return color.asRgbColor().asHexString().toUpperCase();
+}
+
+function computeGridBoundaries(cages: Cage[], gridDimension: number): GridBoundaries {
+  const cellToCage: Record<string, number> = {};
+  for (let cageIndex = 0; cageIndex < cages.length; cageIndex++) {
+    const cage = ensureNonNullable(cages[cageIndex]);
+    for (const cell of cage.cells) {
+      cellToCage[cell] = cageIndex;
+    }
+  }
+
+  const verticalBounds: boolean[][] = [];
+  const horizontalBounds: boolean[][] = [];
+  for (let r = 0; r < gridDimension; r++) {
+    const row: boolean[] = [];
+    verticalBounds[r] = row;
+    for (let c = 1; c < gridDimension; c++) {
+      row[c - 1] = cellToCage[cellRefA1(r, c - 1)] !== cellToCage[cellRefA1(r, c)];
+    }
+  }
+  for (let r = 1; r < gridDimension; r++) {
+    const row: boolean[] = [];
+    horizontalBounds[r - 1] = row;
+    for (let c = 0; c < gridDimension; c++) {
+      row[c] = cellToCage[cellRefA1(r - 1, c)] !== cellToCage[cellRefA1(r, c)];
+    }
+  }
+
+  return { horizontalBounds, verticalBounds };
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -343,7 +377,7 @@ function drawCageLabels(
 
     // Find geometric top-left cell (smallest row, then smallest column)
     const parsed = cage.cells.map((ref) => ({ ref, ...parseCellRef(ref) }));
-    parsed.sort((a, b) => a.r !== b.r ? a.r - b.r : a.c - b.c);
+    parsed.sort((a, b) => a.r === b.r ? a.c - b.c : a.r - b.r);
     const topLeftCell = ensureNonNullable(parsed[0]);
     const topLeftCellRef = topLeftCell.ref;
 
@@ -608,36 +642,8 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   const thinPt = profile.thinPt;
   const thickPt = profile.thickPt;
 
-  // Build cell-to-cage mapping
-  const cellToCage: Record<string, number> = {};
-  for (let cageIndex = 0; cageIndex < cages.length; cageIndex++) {
-    const cage = ensureNonNullable(cages[cageIndex]);
-    for (const cell of cage.cells) {
-      cellToCage[cell] = cageIndex;
-    }
-  }
-
   // Compute cage boundaries
-  const verticalBounds: boolean[][] = [];
-  const horizontalBounds: boolean[][] = [];
-  for (let r = 0; r < gridDimension; r++) {
-    const row: boolean[] = [];
-    verticalBounds[r] = row;
-    for (let c = 1; c < gridDimension; c++) {
-      const leftRef = cellRefA1(r, c - 1);
-      const rightRef = cellRefA1(r, c);
-      row[c - 1] = cellToCage[leftRef] !== cellToCage[rightRef];
-    }
-  }
-  for (let r = 1; r < gridDimension; r++) {
-    const row: boolean[] = [];
-    horizontalBounds[r - 1] = row;
-    for (let c = 0; c < gridDimension; c++) {
-      const topRef = cellRefA1(r - 1, c);
-      const bottomRef = cellRefA1(r, c);
-      row[c] = cellToCage[topRef] !== cellToCage[bottomRef];
-    }
-  }
+  const { horizontalBounds, verticalBounds } = computeGridBoundaries(cages, gridDimension);
 
   // ── Title (full slide width, match Python: 0.2" left, SLIDE_W - 0.4" width) ──
   const titleLeft = pt(in2pt(0.2));
@@ -808,7 +814,7 @@ function runInit(): void {
   }
   const slide = ensureNonNullable(slides[0]);
   const el = slide.getPageElementById(PUZZLE_INIT_OBJECT_ID);
-  if (el?.getPageElementType() !== SlidesApp.PageElementType.SHAPE) {
+  if (el.getPageElementType() !== SlidesApp.PageElementType.SHAPE) {
     SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
     return;
   }

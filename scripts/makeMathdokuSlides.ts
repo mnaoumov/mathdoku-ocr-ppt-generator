@@ -20,10 +20,8 @@ import yaml from 'js-yaml';
 import { exec } from 'node:child_process';
 import { createReadStream, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-import { ensureNonNullable } from './assert';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -195,7 +193,7 @@ async function buildSlides(specPath: string): Promise<string> {
     throw new Error('YAML spec must be a mapping');
   }
 
-  const name = ensureNonNullable(specPath.replace(/\\/g, '/').split('/').pop()).replace(/\.yaml$/, '');
+  const name = basename(specPath, '.yaml');
   const puzzleJson = buildPuzzleJson(spec as YamlSpec, name);
 
   const auth = await getCredentials();
@@ -394,12 +392,11 @@ function loadClientCredentials(): { clientId: string; clientSecret: string; redi
 // ── Main ─────────────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
-  const args = process.argv.slice(2);
-  if (args.length === 0) {
+  const specPath = process.argv[2];
+  if (specPath === undefined) {
     console.error('Usage: npm run makeMathdokuSlides <puzzle.yaml>');
     process.exit(1);
   }
-  const specPath = ensureNonNullable(args[0]);
   if (!existsSync(specPath)) {
     console.error(`Error: ${specPath} not found`);
     process.exit(1);
