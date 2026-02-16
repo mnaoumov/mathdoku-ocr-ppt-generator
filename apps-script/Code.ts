@@ -217,34 +217,34 @@ function drawAxisLabels(
   slide: GoogleAppsScript.Slides.Slide,
   gridLeft: number,
   gridTop: number,
-  cellW: number,
-  n: number,
-  prof: LayoutProfile
+  cellWidth: number,
+  gridDimension: number,
+  profile: LayoutProfile
 ): void {
-  const axisFont = prof.axisFont;
-  const labelH = pt(in2pt(prof.axisLabelH));
-  const labelW = pt(in2pt(prof.axisLabelW));
-  const topOffset = in2pt(prof.axisTopOffset);
-  const sideOffset = in2pt(prof.axisSideOffset);
+  const axisFont = profile.axisFont;
+  const labelHeight = pt(in2pt(profile.axisLabelH));
+  const labelWidth = pt(in2pt(profile.axisLabelW));
+  const topOffset = in2pt(profile.axisTopOffset);
+  const sideOffset = in2pt(profile.axisSideOffset);
   const topY = pt(gridTop - topOffset - TEXT_BOX_TOP_PAD_PT);
   const sideX = pt(gridLeft - sideOffset);
 
   // Column labels (A, B, C, ...): use running x so alignment doesn't drift from rounding
-  let colLeft = gridLeft;
-  for (let c = 0; c < n; c++) {
-    const boxW = pt(cellW);
-    const box = slide.insertTextBox(String.fromCharCode(65 + c), pt(colLeft), topY, boxW, labelH);
+  let columnLeft = gridLeft;
+  for (let c = 0; c < gridDimension; c++) {
+    const boxWidth = pt(cellWidth);
+    const box = slide.insertTextBox(String.fromCharCode(65 + c), pt(columnLeft), topY, boxWidth, labelHeight);
     box.getText().getTextStyle()
       .setFontFamily('Segoe UI').setFontSize(axisFont).setBold(true).setForegroundColor(AXIS_LABEL_MAGENTA);
     box.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
     box.getBorder().setTransparent();
-    colLeft += cellW;
+    columnLeft += cellWidth;
   }
 
   // Row labels (1, 2, 3, ...)
-  for (let r = 0; r < n; r++) {
-    const y = pt(gridTop + r * cellW + (cellW - labelH) / 2);
-    const box = slide.insertTextBox(String(r + 1), sideX, y, labelW, labelH);
+  for (let r = 0; r < gridDimension; r++) {
+    const y = pt(gridTop + r * cellWidth + (cellWidth - labelHeight) / 2);
+    const box = slide.insertTextBox(String(r + 1), sideX, y, labelWidth, labelHeight);
     box.getText().getTextStyle()
       .setFontFamily('Segoe UI').setFontSize(axisFont).setBold(true).setForegroundColor(AXIS_LABEL_MAGENTA);
     box.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
@@ -258,63 +258,63 @@ function drawCageBoundaries(
   gridLeft: number,
   gridTop: number,
   gridSize: number,
-  n: number,
+  gridDimension: number,
   thickPt: number,
-  vBound: boolean[][],
-  hBound: boolean[][]
+  verticalBounds: boolean[][],
+  horizontalBounds: boolean[][]
 ): void {
-  const cellW = gridSize / n;
+  const cellWidth = gridSize / gridDimension;
   const inset = thickPt / 2;
 
   // Vertical runs
-  for (let c = 1; c < n; c++) {
-    let r0 = 0;
-    while (r0 < n) {
-      if (!ensureNonNullable(vBound[r0])[c - 1]) {
-        r0++;
+  for (let c = 1; c < gridDimension; c++) {
+    let startRow = 0;
+    while (startRow < gridDimension) {
+      if (!ensureNonNullable(verticalBounds[startRow])[c - 1]) {
+        startRow++;
         continue;
       }
-      let r1 = r0;
-      while (r1 + 1 < n && ensureNonNullable(vBound[r1 + 1])[c - 1]) {
-        r1++;
+      let endRow = startRow;
+      while (endRow + 1 < gridDimension && ensureNonNullable(verticalBounds[endRow + 1])[c - 1]) {
+        endRow++;
       }
-      const x = gridLeft + c * cellW;
-      let y1 = gridTop + r0 * cellW;
-      let y2 = gridTop + (r1 + 1) * cellW;
-      if (r0 === 0) {
+      const x = gridLeft + c * cellWidth;
+      let y1 = gridTop + startRow * cellWidth;
+      let y2 = gridTop + (endRow + 1) * cellWidth;
+      if (startRow === 0) {
         y1 += inset;
       }
-      if (r1 === n - 1) {
+      if (endRow === gridDimension - 1) {
         y2 -= inset;
       }
       drawThickRect(slide, x - thickPt / 2, y1, thickPt, y2 - y1);
-      r0 = r1 + 1;
+      startRow = endRow + 1;
     }
   }
 
   // Horizontal runs
-  for (let r = 1; r < n; r++) {
-    let c0 = 0;
-    while (c0 < n) {
-      if (!ensureNonNullable(hBound[r - 1])[c0]) {
-        c0++;
+  for (let r = 1; r < gridDimension; r++) {
+    let startCol = 0;
+    while (startCol < gridDimension) {
+      if (!ensureNonNullable(horizontalBounds[r - 1])[startCol]) {
+        startCol++;
         continue;
       }
-      let c1 = c0;
-      while (c1 + 1 < n && ensureNonNullable(hBound[r - 1])[c1 + 1]) {
-        c1++;
+      let endCol = startCol;
+      while (endCol + 1 < gridDimension && ensureNonNullable(horizontalBounds[r - 1])[endCol + 1]) {
+        endCol++;
       }
-      const y = gridTop + r * cellW;
-      let x1 = gridLeft + c0 * cellW;
-      let x2 = gridLeft + (c1 + 1) * cellW;
-      if (c0 === 0) {
+      const y = gridTop + r * cellWidth;
+      let x1 = gridLeft + startCol * cellWidth;
+      let x2 = gridLeft + (endCol + 1) * cellWidth;
+      if (startCol === 0) {
         x1 += inset;
       }
-      if (c1 === n - 1) {
+      if (endCol === gridDimension - 1) {
         x2 -= inset;
       }
       drawThickRect(slide, x1, y - thickPt / 2, x2 - x1, thickPt);
-      c0 = c1 + 1;
+      startCol = endCol + 1;
     }
   }
 }
@@ -323,16 +323,20 @@ function drawCageLabels(
   slide: GoogleAppsScript.Slides.Slide,
   gridLeft: number,
   gridTop: number,
-  cellW: number,
+  cellWidth: number,
   cages: Cage[],
   operations: boolean,
-  prof: LayoutProfile
+  profile: LayoutProfile
 ): void {
-  const cageProf = prof.cage;
-  const insetX = cageProf.insetXFrac * cellW;
-  const insetY = cageProf.insetYFrac * cellW;
-  const boxW = cageProf.boxWFrac * cellW;
-  const boxH = cageProf.boxHFrac * cellW;
+  const cageProfile = profile.cage;
+  const insetX = cageProfile.insetXFrac * cellWidth;
+  const insetY = cageProfile.insetYFrac * cellWidth;
+  const labelBoxWidth = cageProfile.boxWFrac * cellWidth;
+  // Cap box height so it never extends into the candidates region
+  const labelBoxHeight = Math.min(
+    cageProfile.boxHFrac * cellWidth,
+    profile.candidates.yFrac * cellWidth - insetY
+  );
 
   for (let i = 0; i < cages.length; i++) {
     const cage = ensureNonNullable(cages[i]);
@@ -340,8 +344,8 @@ function drawCageLabels(
     // Find geometric top-left cell (smallest row, then smallest column)
     const parsed = cage.cells.map((ref) => ({ ref, ...parseCellRef(ref) }));
     parsed.sort((a, b) => a.r !== b.r ? a.r - b.r : a.c - b.c);
-    const tl = ensureNonNullable(parsed[0]);
-    const tlRef = tl.ref;
+    const topLeftCell = ensureNonNullable(parsed[0]);
+    const topLeftCellRef = topLeftCell.ref;
 
     // Build label
     let label = cage.label ?? '';
@@ -351,14 +355,13 @@ function drawCageLabels(
         : String(cage.value);
     }
 
-    const x = pt(gridLeft + tl.c * cellW + insetX);
-    const y = pt(gridTop + tl.r * cellW + insetY - TEXT_BOX_TOP_PAD_PT);
-    // Size font for usable area (box minus default top+bottom padding)
-    const effectiveBoxH = Math.max(7, boxH - 2 * TEXT_BOX_TOP_PAD_PT);
-    const actualFont = fitFontSize(label, cageProf.font, boxW / 72, effectiveBoxH / 72);
-    // Keep original box height (text is smaller so it fits within padded area)
-    const box = slide.insertTextBox(label, x, y, pt(boxW), pt(boxH));
-    box.setTitle(`CAGE_${String(i)}_${tlRef}`);
+    const x = pt(gridLeft + topLeftCell.c * cellWidth + insetX);
+    const y = pt(gridTop + topLeftCell.r * cellWidth + insetY - TEXT_BOX_TOP_PAD_PT);
+    // Size font for usable area (box minus default top padding from Google Slides)
+    const usableHeight = Math.max(7, labelBoxHeight - TEXT_BOX_TOP_PAD_PT);
+    const actualFont = fitFontSize(label, cageProfile.font, labelBoxWidth / 72, usableHeight / 72);
+    const box = slide.insertTextBox(label, x, y, pt(labelBoxWidth), pt(labelBoxHeight));
+    box.setTitle(`CAGE_${String(i)}_${topLeftCellRef}`);
     box.getText().getTextStyle()
       .setFontFamily('Segoe UI').setFontSize(actualFont).setBold(true).setForegroundColor(CAGE_LABEL_BLUE);
     box.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.START);
@@ -371,27 +374,27 @@ function drawJoinSquares(
   gridLeft: number,
   gridTop: number,
   gridSize: number,
-  n: number,
+  gridDimension: number,
   thickPt: number,
-  vBound: boolean[][],
-  hBound: boolean[][]
+  verticalBounds: boolean[][],
+  horizontalBounds: boolean[][]
 ): void {
-  const cellW = gridSize / n;
-  const clamp = (v: number, lo: number, hi: number): number =>
-    Math.max(lo, Math.min(hi, v));
+  const cellWidth = gridSize / gridDimension;
+  const clamp = (value: number, lo: number, hi: number): number =>
+    Math.max(lo, Math.min(hi, value));
 
   // Draw join squares at every interior vertex where any cage boundary touches (spec: "if any of ... is true")
-  for (let vr = 1; vr < n; vr++) {
-    for (let vc = 1; vc < n; vc++) {
-      const vAbove = ensureNonNullable(vBound[vr - 1])[vc - 1];
-      const vBelow = ensureNonNullable(vBound[vr])[vc - 1];
-      const hLeft = ensureNonNullable(hBound[vr - 1])[vc - 1];
-      const hRight = ensureNonNullable(hBound[vr - 1])[vc];
-      if (!vAbove && !vBelow && !hLeft && !hRight) {
+  for (let vertexRow = 1; vertexRow < gridDimension; vertexRow++) {
+    for (let vertexCol = 1; vertexCol < gridDimension; vertexCol++) {
+      const boundAbove = ensureNonNullable(verticalBounds[vertexRow - 1])[vertexCol - 1];
+      const boundBelow = ensureNonNullable(verticalBounds[vertexRow])[vertexCol - 1];
+      const boundLeft = ensureNonNullable(horizontalBounds[vertexRow - 1])[vertexCol - 1];
+      const boundRight = ensureNonNullable(horizontalBounds[vertexRow - 1])[vertexCol];
+      if (!boundAbove && !boundBelow && !boundLeft && !boundRight) {
         continue;
       }
-      const x = gridLeft + vc * cellW;
-      const y = gridTop + vr * cellW;
+      const x = gridLeft + vertexCol * cellWidth;
+      const y = gridTop + vertexRow * cellWidth;
       const left = clamp(x - thickPt / 2, gridLeft, gridLeft + gridSize - thickPt);
       const top = clamp(y - thickPt / 2, gridTop, gridTop + gridSize - thickPt);
       drawThickRect(slide, left, top, pt(thickPt), pt(thickPt));
@@ -406,15 +409,15 @@ function drawOuterBorder(
   gridSize: number,
   thickPt: number
 ): void {
-  const half = thickPt / 2;
+  const halfThick = thickPt / 2;
   // Top
-  drawThickRect(slide, gridLeft - half, gridTop - half, gridSize + thickPt, thickPt);
+  drawThickRect(slide, gridLeft - halfThick, gridTop - halfThick, gridSize + thickPt, thickPt);
   // Bottom
-  drawThickRect(slide, gridLeft - half, gridTop + gridSize - half, gridSize + thickPt, thickPt);
+  drawThickRect(slide, gridLeft - halfThick, gridTop + gridSize - halfThick, gridSize + thickPt, thickPt);
   // Left
-  drawThickRect(slide, gridLeft - half, gridTop + half, thickPt, Math.max(0, gridSize - thickPt));
+  drawThickRect(slide, gridLeft - halfThick, gridTop + halfThick, thickPt, Math.max(0, gridSize - thickPt));
   // Right
-  drawThickRect(slide, gridLeft + gridSize - half, gridTop + half, thickPt, Math.max(0, gridSize - thickPt));
+  drawThickRect(slide, gridLeft + gridSize - halfThick, gridTop + halfThick, thickPt, Math.max(0, gridSize - thickPt));
 }
 
 function drawThickRect(
@@ -439,55 +442,55 @@ function drawThinGrid(
   gridLeft: number,
   gridTop: number,
   gridSize: number,
-  n: number,
-  thinW: number,
-  vBound: boolean[][],
-  hBound: boolean[][]
+  gridDimension: number,
+  thinWidth: number,
+  verticalBounds: boolean[][],
+  horizontalBounds: boolean[][]
 ): void {
-  const cellW = gridSize / n;
-  const halfThin = thinW / 2;
+  const cellWidth = gridSize / gridDimension;
+  const halfThinWidth = thinWidth / 2;
 
   // Vertical thin lines: between columns c-1 and c, for each row
-  for (let c = 1; c < n; c++) {
-    for (let r = 0; r < n; r++) {
-      if (ensureNonNullable(vBound[r])[c - 1]) {
+  for (let c = 1; c < gridDimension; c++) {
+    for (let r = 0; r < gridDimension; r++) {
+      if (ensureNonNullable(verticalBounds[r])[c - 1]) {
         continue;
       }
-      const x = gridLeft + c * cellW;
-      const y = gridTop + r * cellW;
+      const x = gridLeft + c * cellWidth;
+      const y = gridTop + r * cellWidth;
       const rect = slide.insertShape(SlidesApp.ShapeType.RECTANGLE,
-        pt(x - halfThin), pt(y), pt(thinW), pt(cellW));
+        pt(x - halfThinWidth), pt(y), pt(thinWidth), pt(cellWidth));
       rect.getFill().setSolidFill(THIN_GRAY);
       rect.getBorder().setTransparent();
     }
   }
 
   // Horizontal thin lines: between rows r-1 and r, for each column
-  for (let r = 1; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      if (ensureNonNullable(hBound[r - 1])[c]) {
+  for (let r = 1; r < gridDimension; r++) {
+    for (let c = 0; c < gridDimension; c++) {
+      if (ensureNonNullable(horizontalBounds[r - 1])[c]) {
         continue;
       }
-      const x = gridLeft + c * cellW;
-      const y = gridTop + r * cellW;
+      const x = gridLeft + c * cellWidth;
+      const y = gridTop + r * cellWidth;
       const rect = slide.insertShape(SlidesApp.ShapeType.RECTANGLE,
-        pt(x), pt(y - halfThin), pt(cellW), pt(thinW));
+        pt(x), pt(y - halfThinWidth), pt(cellWidth), pt(thinWidth));
       rect.getFill().setSolidFill(THIN_GRAY);
       rect.getBorder().setTransparent();
     }
   }
 }
 
-function fitFontSize(text: string, basePt: number, boxWIn: number, boxHIn: number): number {
-  const t = text.trim();
-  if (!t) {
+function fitFontSize(text: string, basePt: number, boxWidthIn: number, boxHeightIn: number): number {
+  const trimmedText = text.trim();
+  if (!trimmedText) {
     return basePt;
   }
-  const maxWPt = Math.max(1, boxWIn * 72 - 2);
-  const maxHPt = Math.max(1, boxHIn * 72 - 1);
-  const charCount = Math.max(1, t.length);
-  const widthBased = Math.floor(maxWPt / (0.60 * charCount));
-  const heightBased = Math.floor(maxHPt / 1.15);
+  const maxWidthPt = Math.max(1, boxWidthIn * 72 - 2);
+  const maxHeightPt = Math.max(1, boxHeightIn * 72 - 1);
+  const charCount = Math.max(1, trimmedText.length);
+  const widthBased = Math.floor(maxWidthPt / (0.60 * charCount));
+  const heightBased = Math.floor(maxHeightPt / 1.15);
   return Math.max(7, Math.min(basePt, widthBased, heightBased));
 }
 
@@ -495,12 +498,12 @@ function formatCandidates(digits: string, gridSize: number): string {
   // Fixed-position layout: each digit at its slot, missing digits replaced with space.
   // No inter-digit spaces — original used Font.Spacing for visual separation,
   // which Google Slides API doesn't support (see CLAUDE.md deviations).
-  const half = Math.ceil(gridSize / 2);
+  const firstRowCount = Math.ceil(gridSize / 2);
   let line1 = '';
   let line2 = '';
   for (let d = 1; d <= gridSize; d++) {
     const ch = digits.includes(String(d)) ? String(d) : ' ';
-    if (d <= half) {
+    if (d <= firstRowCount) {
       line1 += ch;
     } else {
       line2 += ch;
@@ -560,19 +563,19 @@ function getShapeByTitle(slide: GoogleAppsScript.Slides.Slide, title: string): G
 
 function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   const puzzle: PuzzleJson = (typeof puzzleJson === 'string') ? JSON.parse(puzzleJson) as PuzzleJson : puzzleJson;
-  const n = puzzle.size;
+  const gridDimension = puzzle.size;
   const cages = puzzle.cages;
   const operations = puzzle.operations !== false;
   const title = puzzle.title ?? '';
   const meta = puzzle.meta ?? '';
 
-  const prof = LAYOUT_PROFILES[n];
-  if (!prof) {
-    throw new Error(`Unsupported size: ${String(n)}`);
+  const profile = LAYOUT_PROFILES[gridDimension];
+  if (!profile) {
+    throw new Error(`Unsupported size: ${String(gridDimension)}`);
   }
 
   // Store puzzle state
-  const state: PuzzleState = { cages, operations, size: n };
+  const state: PuzzleState = { cages, operations, size: gridDimension };
   PropertiesService.getDocumentProperties().setProperty('mathdokuState', JSON.stringify(state));
 
   const pres = presId === undefined
@@ -580,15 +583,15 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
     : SlidesApp.openById(presId);
 
   // Remove default slides
-  for (const s of pres.getSlides()) {
-    s.remove();
+  for (const existingSlide of pres.getSlides()) {
+    existingSlide.remove();
   }
 
   const slide = pres.appendSlide(SlidesApp.PredefinedLayout.BLANK);
 
   // Remove any default placeholder elements from the blank layout
-  for (const el of slide.getPageElements()) {
-    el.remove();
+  for (const element of slide.getPageElements()) {
+    element.remove();
   }
 
   // Ensure slide background is white (covers full page area)
@@ -598,41 +601,41 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   Logger.log(`Page dimensions: ${String(pres.getPageWidth())}x${String(pres.getPageHeight())} pt (expected ${String(REF_W)}x${String(REF_H)})`);
 
   // All coordinates use reference dimensions (960x540 pt); round to integer pt for pixel-perfect match to PowerPoint
-  const gridLeft = pt(in2pt(prof.gridLeftIn));
-  const gridTop = pt(in2pt(prof.gridTopIn));
-  const gridSize = pt(in2pt(prof.gridSizeIn));
-  const cellW = gridSize / n;
-  const thinPt = prof.thinPt;
-  const thickPt = prof.thickPt;
+  const gridLeft = pt(in2pt(profile.gridLeftIn));
+  const gridTop = pt(in2pt(profile.gridTopIn));
+  const gridSize = pt(in2pt(profile.gridSizeIn));
+  const cellWidth = gridSize / gridDimension;
+  const thinPt = profile.thinPt;
+  const thickPt = profile.thickPt;
 
   // Build cell-to-cage mapping
   const cellToCage: Record<string, number> = {};
-  for (let ci = 0; ci < cages.length; ci++) {
-    const cage = ensureNonNullable(cages[ci]);
+  for (let cageIndex = 0; cageIndex < cages.length; cageIndex++) {
+    const cage = ensureNonNullable(cages[cageIndex]);
     for (const cell of cage.cells) {
-      cellToCage[cell] = ci;
+      cellToCage[cell] = cageIndex;
     }
   }
 
   // Compute cage boundaries
-  const vBound: boolean[][] = [];
-  const hBound: boolean[][] = [];
-  for (let r = 0; r < n; r++) {
+  const verticalBounds: boolean[][] = [];
+  const horizontalBounds: boolean[][] = [];
+  for (let r = 0; r < gridDimension; r++) {
     const row: boolean[] = [];
-    vBound[r] = row;
-    for (let c = 1; c < n; c++) {
+    verticalBounds[r] = row;
+    for (let c = 1; c < gridDimension; c++) {
       const leftRef = cellRefA1(r, c - 1);
       const rightRef = cellRefA1(r, c);
       row[c - 1] = cellToCage[leftRef] !== cellToCage[rightRef];
     }
   }
-  for (let r = 1; r < n; r++) {
+  for (let r = 1; r < gridDimension; r++) {
     const row: boolean[] = [];
-    hBound[r - 1] = row;
-    for (let c = 0; c < n; c++) {
+    horizontalBounds[r - 1] = row;
+    for (let c = 0; c < gridDimension; c++) {
       const topRef = cellRefA1(r - 1, c);
-      const botRef = cellRefA1(r, c);
-      row[c] = cellToCage[topRef] !== cellToCage[botRef];
+      const bottomRef = cellRefA1(r, c);
+      row[c] = cellToCage[topRef] !== cellToCage[bottomRef];
     }
   }
 
@@ -640,59 +643,60 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   const titleLeft = pt(in2pt(0.2));
   const titleTop = pt(in2pt(0.05));
   const titleWidth = pt(REF_W - in2pt(0.4));
-  const titleHeight = pt(in2pt(prof.titleHIn));
+  const titleHeight = pt(in2pt(profile.titleHIn));
   const titleBox = slide.insertTextBox(`${title}\n${meta}`,
     titleLeft, titleTop, titleWidth, titleHeight);
   const titleRange = titleBox.getText();
   titleRange.getRange(0, title.length).getTextStyle()
-    .setFontFamily('Segoe UI').setFontSize(prof.titleSz).setBold(true).setForegroundColor(BLACK);
+    .setFontFamily('Segoe UI').setFontSize(profile.titleSz).setBold(true).setForegroundColor(BLACK);
   if (meta.length > 0) {
     titleRange.getRange(title.length + 1, title.length + 1 + meta.length).getTextStyle()
-      .setFontFamily('Segoe UI').setFontSize(prof.metaSz).setBold(false).setForegroundColor(VALUE_GRAY);
+      .setFontFamily('Segoe UI').setFontSize(profile.metaSz).setBold(false).setForegroundColor(VALUE_GRAY);
   }
   titleRange.getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
 
   // ── Value + Candidates boxes ──
-  const valProf = prof.value;
-  const candProf = prof.candidates;
+  const valueProfile = profile.value;
+  const candidatesProfile = profile.candidates;
 
-  for (let r = 0; r < n; r++) {
-    for (let c = 0; c < n; c++) {
-      const cellLeft = gridLeft + c * cellW;
-      const cellTop = gridTop + r * cellW;
+  for (let r = 0; r < gridDimension; r++) {
+    for (let c = 0; c < gridDimension; c++) {
+      const cellLeft = gridLeft + c * cellWidth;
+      const cellTop = gridTop + r * cellWidth;
       const ref = cellRefA1(r, c);
 
       // VALUE box
-      const valBox = slide.insertTextBox(' ',
-        pt(cellLeft), pt(cellTop + valProf.yFrac * cellW),
-        pt(cellW), pt(valProf.hFrac * cellW));
-      valBox.setTitle(`VALUE_${ref}`);
-      valBox.getText().getTextStyle()
-        .setFontFamily('Segoe UI').setFontSize(valProf.font).setBold(true).setForegroundColor(VALUE_GRAY);
-      valBox.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
-      valBox.setContentAlignment(SlidesApp.ContentAlignment.MIDDLE);
+      const valueBox = slide.insertTextBox(' ',
+        pt(cellLeft), pt(cellTop + valueProfile.yFrac * cellWidth),
+        pt(cellWidth), pt(valueProfile.hFrac * cellWidth));
+      valueBox.setTitle(`VALUE_${ref}`);
+      valueBox.getText().getTextStyle()
+        .setFontFamily('Segoe UI').setFontSize(valueProfile.font).setBold(true).setForegroundColor(VALUE_GRAY);
+      valueBox.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
+      valueBox.setContentAlignment(SlidesApp.ContentAlignment.MIDDLE);
 
-      // CANDIDATES box
-      const candBox = slide.insertTextBox(' ',
-        pt(cellLeft + candProf.xFrac * cellW), pt(cellTop + candProf.yFrac * cellW),
-        pt(candProf.wFrac * cellW), pt(candProf.hFrac * cellW));
-      candBox.setTitle(`CANDIDATES_${ref}`);
-      candBox.getText().getTextStyle()
-        .setFontFamily(CANDIDATES_FONT).setFontSize(candProf.font).setBold(false).setForegroundColor(CAND_DARK_RED);
-      candBox.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.START);
-      candBox.setContentAlignment(SlidesApp.ContentAlignment.BOTTOM);
+      // CANDIDATES box (extend height to compensate for default text box padding;
+      // BOTTOM-anchored text is pushed up by bottom padding, extra height prevents upward overflow)
+      const candidatesBox = slide.insertTextBox(' ',
+        pt(cellLeft + candidatesProfile.xFrac * cellWidth), pt(cellTop + candidatesProfile.yFrac * cellWidth),
+        pt(candidatesProfile.wFrac * cellWidth), pt(candidatesProfile.hFrac * cellWidth + 2 * TEXT_BOX_TOP_PAD_PT));
+      candidatesBox.setTitle(`CANDIDATES_${ref}`);
+      candidatesBox.getText().getTextStyle()
+        .setFontFamily(CANDIDATES_FONT).setFontSize(candidatesProfile.font).setBold(false).setForegroundColor(CAND_DARK_RED);
+      candidatesBox.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.START);
+      candidatesBox.setContentAlignment(SlidesApp.ContentAlignment.BOTTOM);
     }
   }
 
   // ── Draw order: thin grid, cage boundaries, join squares, outer border, axis labels, cage labels ──
-  drawThinGrid(slide, gridLeft, gridTop, gridSize, n, thinPt, vBound, hBound);
-  drawCageBoundaries(slide, gridLeft, gridTop, gridSize, n, thickPt, vBound, hBound);
-  drawJoinSquares(slide, gridLeft, gridTop, gridSize, n, thickPt, vBound, hBound);
+  drawThinGrid(slide, gridLeft, gridTop, gridSize, gridDimension, thinPt, verticalBounds, horizontalBounds);
+  drawCageBoundaries(slide, gridLeft, gridTop, gridSize, gridDimension, thickPt, verticalBounds, horizontalBounds);
+  drawJoinSquares(slide, gridLeft, gridTop, gridSize, gridDimension, thickPt, verticalBounds, horizontalBounds);
   drawOuterBorder(slide, gridLeft, gridTop, gridSize, thickPt);
-  drawAxisLabels(slide, gridLeft, gridTop, cellW, n, prof);
+  drawAxisLabels(slide, gridLeft, gridTop, cellWidth, gridDimension, profile);
 
   // ── Cage labels ──
-  drawCageLabels(slide, gridLeft, gridTop, cellW, cages, operations, prof);
+  drawCageLabels(slide, gridLeft, gridTop, cellWidth, cages, operations, profile);
 
   // ── Footer ──
   const footerBox = slide.insertTextBox(FOOTER_TEXT,
@@ -702,16 +706,16 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   footerBox.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.END);
 
   // ── Solve notes columns ──
-  const solveProf = prof.solve;
-  const notesLeft = in2pt(solveProf.leftIn);
-  const colW = in2pt(solveProf.colWIn);
-  const colGap = in2pt(solveProf.colGapIn);
-  for (let i = 0; i < solveProf.cols; i++) {
+  const solveProfile = profile.solve;
+  const notesLeft = in2pt(solveProfile.leftIn);
+  const columnWidth = in2pt(solveProfile.colWIn);
+  const columnGap = in2pt(solveProfile.colGapIn);
+  for (let i = 0; i < solveProfile.cols; i++) {
     const noteBox = slide.insertTextBox(' ',
-      pt(notesLeft + i * (colW + colGap)), pt(gridTop), pt(colW), pt(gridSize));
+      pt(notesLeft + i * (columnWidth + columnGap)), pt(gridTop), pt(columnWidth), pt(gridSize));
     noteBox.setTitle(`SOLVE_NOTES_COL${String(i + 1)}`);
     noteBox.getText().getTextStyle()
-      .setFontFamily('Segoe UI').setFontSize(solveProf.font).setBold(false).setForegroundColor(VALUE_GRAY);
+      .setFontFamily('Segoe UI').setFontSize(solveProfile.font).setBold(false).setForegroundColor(VALUE_GRAY);
     noteBox.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.START);
     noteBox.setContentAlignment(SlidesApp.ContentAlignment.TOP);
     noteBox.getBorder().getLineFill().setSolidFill(LIGHT_GRAY_BORDER);
@@ -719,21 +723,21 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   }
 
   // ── Post-scale: fit all content on slide (horizontal and vertical) ──
-  const pageW = pres.getPageWidth();
-  const pageH = pres.getPageHeight();
-  const contentRight = notesLeft + solveProf.cols * colW + (solveProf.cols - 1) * colGap;
+  const pageWidth = pres.getPageWidth();
+  const pageHeight = pres.getPageHeight();
+  const contentRight = notesLeft + solveProfile.cols * columnWidth + (solveProfile.cols - 1) * columnGap;
   const contentBottom = Math.max(gridTop + gridSize, REF_H - in2pt(0.45));
   const margin = 20;
-  const needScale = pageW < REF_W - 0.5 || pageH < REF_H - 0.5
-    || contentRight > pageW - margin || contentBottom > pageH - margin;
-  const scaleW = (pageW - margin) / contentRight;
-  const scaleH = (pageH - margin) / contentBottom;
-  const finalScale = needScale ? Math.min(1, pageW / REF_W, pageH / REF_H, scaleW, scaleH) : 1;
+  const needScale = pageWidth < REF_W - 0.5 || pageHeight < REF_H - 0.5
+    || contentRight > pageWidth - margin || contentBottom > pageHeight - margin;
+  const horizontalScale = (pageWidth - margin) / contentRight;
+  const verticalScale = (pageHeight - margin) / contentBottom;
+  const finalScale = needScale ? Math.min(1, pageWidth / REF_W, pageHeight / REF_H, horizontalScale, verticalScale) : 1;
   if (needScale && finalScale < 1) {
     scaleSlideElements(slide, finalScale);
   }
 
-  Logger.log(`Import complete: ${String(n)}x${String(n)} grid, pageW=${String(pageW)} pageH=${String(pageH)} scale=${finalScale.toFixed(3)}`);
+  Logger.log(`Import complete: ${String(gridDimension)}x${String(gridDimension)} grid, pageW=${String(pageWidth)} pageH=${String(pageHeight)} scale=${finalScale.toFixed(3)}`);
 }
 
 function in2pt(inches: number): number {
@@ -828,31 +832,31 @@ function runInit(): void {
 }
 
 function scaleSlideElements(slide: GoogleAppsScript.Slides.Slide, scale: number): void {
-  for (const el of slide.getPageElements()) {
-    el.setLeft(el.getLeft() * scale);
-    el.setTop(el.getTop() * scale);
-    el.setWidth(el.getWidth() * scale);
-    el.setHeight(el.getHeight() * scale);
+  for (const element of slide.getPageElements()) {
+    element.setLeft(element.getLeft() * scale);
+    element.setTop(element.getTop() * scale);
+    element.setWidth(element.getWidth() * scale);
+    element.setHeight(element.getHeight() * scale);
 
-    const type = el.getPageElementType();
+    const type = element.getPageElementType();
     if (type === SlidesApp.PageElementType.SHAPE) {
-      const shape = el.asShape();
+      const shape = element.asShape();
       for (const run of shape.getText().getRuns()) {
-        const fs = run.getTextStyle().getFontSize();
-        if (fs) {
-          run.getTextStyle().setFontSize(Math.max(7, Math.round(fs * scale)));
+        const fontSize = run.getTextStyle().getFontSize();
+        if (fontSize) {
+          run.getTextStyle().setFontSize(Math.max(7, Math.round(fontSize * scale)));
         }
       }
       try {
-        const bw = shape.getBorder().getWeight();
-        if (bw > 0) {
-          shape.getBorder().setWeight(bw * scale);
+        const borderWeight = shape.getBorder().getWeight();
+        if (borderWeight > 0) {
+          shape.getBorder().setWeight(borderWeight * scale);
         }
       } catch (_e) { /* no border */ }
     } else if (type === SlidesApp.PageElementType.LINE) {
-      const line = el.asLine();
-      const w = line.getWeight();
-      line.setWeight(Math.max(1, w * scale));
+      const line = element.asLine();
+      const lineWeight = line.getWeight();
+      line.setWeight(Math.max(1, lineWeight * scale));
     }
   }
 }

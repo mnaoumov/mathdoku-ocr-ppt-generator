@@ -28,6 +28,44 @@ interface ValueOp {
 
 // ── Dialog ─────────────────────────────────────────────────────────────────
 
+function clearShapeText(slide: GoogleAppsScript.Slides.Slide, title: string): void {
+  const shape = getShapeByTitle(slide, title);
+  if (shape) {
+    shape.getText().setText(' ');
+  }
+}
+
+function autoEliminate(
+  slide: GoogleAppsScript.Slides.Slide,
+  cellRefs: string[],
+  operation: CellOperation,
+  gridSize: number
+): void {
+  if (operation.type === 'value') {
+    // Setting a value: strikethrough that digit in all other cells in the same row/column
+    const ref = parseCellRef(ensureNonNullable(cellRefs[0]));
+    const digit = operation.digit;
+    for (let i = 0; i < gridSize; i++) {
+      if (i !== ref.c) {
+        applyGreenStrikethrough(slide, cellRefA1(ref.r, i), digit);
+      }
+      if (i !== ref.r) {
+        applyGreenStrikethrough(slide, cellRefA1(i, ref.c), digit);
+      }
+    }
+  } else if (operation.type === 'candidates') {
+    // Adding candidates: strikethrough any digits that conflict with
+    // existing values in the same row or column
+    for (const cellRef of cellRefs) {
+      const ref = parseCellRef(cellRef);
+      const conflicting = getRowColValues(slide, ref.r, ref.c, gridSize);
+      if (conflicting.length > 0) {
+        applyGreenStrikethrough(slide, cellRef, conflicting.join(''));
+      }
+    }
+  }
+}
+
 function applyGreenCandidates(
   slide: GoogleAppsScript.Slides.Slide,
   cellRef: string,
@@ -45,6 +83,9 @@ function applyGreenCandidates(
   textRange.getTextStyle()
     .setFontFamily(CANDIDATES_FONT)
     .setForegroundColor(GREEN);
+
+  // Clear final value when setting candidates
+  clearShapeText(slide, `VALUE_${cellRef}`);
 }
 
 // ── Main entry ─────────────────────────────────────────────────────────────
@@ -90,6 +131,9 @@ function applyGreenValue(
     .setFontFamily('Segoe UI')
     .setBold(true)
     .setForegroundColor(GREEN);
+
+  // Clear candidates when setting final value
+  clearShapeText(slide, `CANDIDATES_${cellRef}`);
 }
 
 // ── Apply operations ───────────────────────────────────────────────────────
@@ -117,39 +161,65 @@ function applyOps(
   }
 }
 
-function enter(cellsText: string, opsText: string): void {
+/**
+ * Enter command: parse and apply one or more cell:operation commands.
+ *
+ * Format:  A1:=1  A1:234  A1:-567  (B2 C3):234  @D4:-567
+ * Multiple commands in one line:  A1:=1 (B2 C3):234 @D4:-567
+ */
+function enter(input: string): void {
   const state = getPuzzleState();
-  const n = state.size;
+  const gridSize = state.size;
   const slide = getCurrentSlide();
 
-  // Parse cell references
-  const tokens = cellsText.trim().split(/\s+/);
-  const cellRefs: string[] = [];
-  for (const token of tokens) {
-    if (token.startsWith('@')) {
-      // Expand cage
-      const anchor = parseCellRef(token.substring(1));
-      const cageCells = getCageCells(anchor.r, anchor.c);
-      for (const cell of cageCells) {
-        cellRefs.push(cell);
+  const commands = parseInput(input);
+  for (const cmd of commands) {
+    for (const cellRef of cmd.cellRefs) {
+      applyOps(slide, cellRef, cmd.operation, gridSize);
+    }
+    autoEliminate(slide, cmd.cellRefs, cmd.operation, gridSize);
+  }
+}
+
+/** Read confirmed values from all other cells in the same row and column. */
+function getRowColValues(
+  slide: GoogleAppsScript.Slides.Slide,
+  r: number,
+  c: number,
+  gridSize: number
+): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < gridSize; i++) {
+    if (i !== c) {
+      const v = getCellValue(slide, cellRefA1(r, i));
+      if (v) {
+        values.push(v);
       }
-    } else {
-      const cell = parseCellRef(token);
-      cellRefs.push(cellRefA1(cell.r, cell.c));
+    }
+    if (i !== r) {
+      const v = getCellValue(slide, cellRefA1(i, c));
+      if (v) {
+        values.push(v);
+      }
     }
   }
+  return values;
+}
 
-  if (cellRefs.length === 0) {
-    throw new Error('No cells specified');
+/** Read the current value digit from a VALUE shape, or null if empty. */
+function getCellValue(
+  slide: GoogleAppsScript.Slides.Slide,
+  cellRef: string
+): string | null {
+  const shape = getShapeByTitle(slide, `VALUE_${cellRef}`);
+  if (!shape) {
+    return null;
   }
-
-  // Parse operations
-  const ops = parseOperations(opsText, cellRefs.length);
-
-  // Apply operations
-  for (const cellRef of cellRefs) {
-    applyOps(slide, cellRef, ops, n);
+  const text = shape.getText().asString().replace(/\n$/, '').trim();
+  if (/^[1-9]$/.test(text)) {
+    return text;
   }
+  return null;
 }
 
 function parseOperations(text: string, cellCount: number): CellOperation {

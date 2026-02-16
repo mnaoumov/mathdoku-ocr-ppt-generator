@@ -94,22 +94,25 @@ function makeNextSlide(): void {
   }
   const slide = getCurrentSlide();
   const state = getPuzzleState();
-  const n = state.size;
+  const gridSize = state.size;
 
   // Duplicate the slide
   const newSlide = slide.duplicate();
 
   // Process all shapes on the NEW slide
-  for (const el of newSlide.getPageElements()) {
-    const title = el.getTitle();
+  for (const element of newSlide.getPageElements()) {
+    const title = element.getTitle();
     if (!title) {
       continue;
     }
 
     if (title.startsWith('VALUE_')) {
-      finalizeValueShape(el.asShape());
+      finalizeValueShape(element.asShape());
     } else if (title.startsWith('CANDIDATES_')) {
-      finalizeCandidatesShape(el.asShape(), n);
+      finalizeCandidatesShape(element.asShape(), gridSize);
     }
   }
+
+  // Switch to the newly created slide
+  newSlide.selectAsCurrentPage();
 }
