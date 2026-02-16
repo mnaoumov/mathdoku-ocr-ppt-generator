@@ -313,5 +313,5 @@ function showEnterDialog(): void {
   const html = HtmlService.createHtmlOutputFromFile('EnterDialog')
     .setWidth(400)
     .setHeight(140);
-  SlidesApp.getUi().showModalDialog(html, 'Edit Cell');
+  SlidesApp.getUi().showModelessDialog(html, 'Edit Cell');
 }
