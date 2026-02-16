@@ -18,9 +18,20 @@ import { type OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
 import yaml from 'js-yaml';
 import { exec } from 'node:child_process';
-import { createReadStream, existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  createReadStream,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  writeFileSync
+} from 'node:fs';
 import { createServer } from 'node:http';
-import { basename, dirname, join, resolve } from 'node:path';
+import {
+  basename,
+  dirname,
+  join,
+  resolve
+} from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -289,10 +300,10 @@ function handleHttpError(e: GaxiosError): never {
     const friendly = API_NAMES[service] ?? service;
     console.error(
       `Error: ${friendly} is not enabled.\n`
-      + '\n'
-      + `  Run:  gcloud services enable ${service}\n`
-      + '\n'
-      + '  Then wait ~30 seconds and retry.'
+        + '\n'
+        + `  Run:  gcloud services enable ${service}\n`
+        + '\n'
+        + '  Then wait ~30 seconds and retry.'
     );
     process.exit(1);
   }
@@ -300,10 +311,10 @@ function handleHttpError(e: GaxiosError): never {
   if (reason === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' || status === 403) {
     console.error(
       `Error: permission denied: ${e.message}\n`
-      + '\n'
-      + `Full error details: ${JSON.stringify(e.response?.data, null, 2)}\n`
-      + '\n'
-      + `Delete ${TOKEN_FILE} and re-run to re-authenticate.`
+        + '\n'
+        + `Full error details: ${JSON.stringify(e.response?.data, null, 2)}\n`
+        + '\n'
+        + `Delete ${TOKEN_FILE} and re-run to re-authenticate.`
     );
     process.exit(1);
   }
@@ -367,12 +378,12 @@ function loadClientCredentials(): { clientId: string; clientSecret: string; redi
   if (!existsSync(CREDENTIALS_FILE)) {
     console.error(
       'Error: credentials.json not found.\n'
-      + '\n'
-      + 'Create an OAuth Desktop client in Google Cloud Console and\n'
-      + 'download the JSON to:\n'
-      + `  ${CREDENTIALS_FILE}\n`
-      + '\n'
-      + 'See README for details.\n'
+        + '\n'
+        + 'Create an OAuth Desktop client in Google Cloud Console and\n'
+        + 'download the JSON to:\n'
+        + `  ${CREDENTIALS_FILE}\n`
+        + '\n'
+        + 'See README for details.\n'
     );
     process.exit(1);
   }

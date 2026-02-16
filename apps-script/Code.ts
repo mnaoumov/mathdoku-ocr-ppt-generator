@@ -135,66 +135,114 @@ const TEXT_BOX_TOP_PAD_PT = 0.05 * 72;
 
 const LAYOUT_PROFILES: Record<number, LayoutProfile> = {
   4: {
-    axisFont: 24, axisLabelH: 0.34, axisLabelW: 0.30,
-    axisSideOffset: 0.36, axisTopOffset: 0.42, cage: { boxHFrac: 0.35, boxWFrac: 0.65, font: 28, insetXFrac: 0.07, insetYFrac: 0.05 },
-    candidates: { digitMargin: 12, font: 22, hFrac: 0.60, wFrac: 0.80, xFrac: 0.15, yFrac: 0.38 }, gridLeftIn: 0.65,
-    gridSizeIn: 4.75, gridTopIn: 1.35, metaSz: 20,
-    solve: { colGapIn: 0.25, cols: 2, colWIn: 3.25, font: 16, leftIn: 6.20 }, thickPt: 5.0,
+    axisFont: 24,
+    axisLabelH: 0.34,
+    axisLabelW: 0.30,
+    axisSideOffset: 0.36,
+    axisTopOffset: 0.42,
+    cage: { boxHFrac: 0.35, boxWFrac: 0.65, font: 28, insetXFrac: 0.07, insetYFrac: 0.05 },
+    candidates: { digitMargin: 12, font: 22, hFrac: 0.60, wFrac: 0.80, xFrac: 0.15, yFrac: 0.38 },
+    gridLeftIn: 0.65,
+    gridSizeIn: 4.75,
+    gridTopIn: 1.35,
+    metaSz: 20,
+    solve: { colGapIn: 0.25, cols: 2, colWIn: 3.25, font: 16, leftIn: 6.20 },
+    thickPt: 5.0,
     thinPt: 1.0,
     titleHIn: 0.85,
     titleSz: 30,
     value: { font: 52, hFrac: 0.70, yFrac: 0.30 }
   },
   5: {
-    axisFont: 26, axisLabelH: 0.37, axisLabelW: 0.32,
-    axisSideOffset: 0.38, axisTopOffset: 0.45, cage: { boxHFrac: 0.33, boxWFrac: 0.65, font: 24, insetXFrac: 0.07, insetYFrac: 0.05 },
-    candidates: { digitMargin: 7, font: 20, hFrac: 0.62, wFrac: 0.88, xFrac: 0.05, yFrac: 0.36 }, gridLeftIn: 0.65,
-    gridSizeIn: 5.20, gridTopIn: 1.25, metaSz: 18,
-    solve: { colGapIn: 0.25, cols: 2, colWIn: 3.10, font: 16, leftIn: 6.55 }, thickPt: 5.0,
+    axisFont: 26,
+    axisLabelH: 0.37,
+    axisLabelW: 0.32,
+    axisSideOffset: 0.38,
+    axisTopOffset: 0.45,
+    cage: { boxHFrac: 0.33, boxWFrac: 0.65, font: 24, insetXFrac: 0.07, insetYFrac: 0.05 },
+    candidates: { digitMargin: 7, font: 20, hFrac: 0.62, wFrac: 0.88, xFrac: 0.05, yFrac: 0.36 },
+    gridLeftIn: 0.65,
+    gridSizeIn: 5.20,
+    gridTopIn: 1.25,
+    metaSz: 18,
+    solve: { colGapIn: 0.25, cols: 2, colWIn: 3.10, font: 16, leftIn: 6.55 },
+    thickPt: 5.0,
     thinPt: 1.0,
     titleHIn: 0.70,
     titleSz: 26,
     value: { font: 44, hFrac: 0.72, yFrac: 0.28 }
   },
   6: {
-    axisFont: 22, axisLabelH: 0.32, axisLabelW: 0.28,
-    axisSideOffset: 0.34, axisTopOffset: 0.41, cage: { boxHFrac: 0.30, boxWFrac: 0.65, font: 22, insetXFrac: 0.07, insetYFrac: 0.05 },
-    candidates: { digitMargin: 5, font: 19, hFrac: 0.65, wFrac: 0.86, xFrac: 0.07, yFrac: 0.33 }, gridLeftIn: 0.65,
-    gridSizeIn: 5.70, gridTopIn: 1.15, metaSz: 16,
-    solve: { colGapIn: 0.25, cols: 2, colWIn: 2.95, font: 16, leftIn: 6.85 }, thickPt: 6.5,
+    axisFont: 22,
+    axisLabelH: 0.32,
+    axisLabelW: 0.28,
+    axisSideOffset: 0.34,
+    axisTopOffset: 0.41,
+    cage: { boxHFrac: 0.30, boxWFrac: 0.65, font: 22, insetXFrac: 0.07, insetYFrac: 0.05 },
+    candidates: { digitMargin: 5, font: 19, hFrac: 0.65, wFrac: 0.86, xFrac: 0.07, yFrac: 0.33 },
+    gridLeftIn: 0.65,
+    gridSizeIn: 5.70,
+    gridTopIn: 1.15,
+    metaSz: 16,
+    solve: { colGapIn: 0.25, cols: 2, colWIn: 2.95, font: 16, leftIn: 6.85 },
+    thickPt: 6.5,
     thinPt: 1.0,
     titleHIn: 0.65,
     titleSz: 24,
     value: { font: 38, hFrac: 0.75, yFrac: 0.25 }
   },
   7: {
-    axisFont: 28, axisLabelH: 0.40, axisLabelW: 0.35,
-    axisSideOffset: 0.42, axisTopOffset: 0.49, cage: { boxHFrac: 0.28, boxWFrac: 0.65, font: 20, insetXFrac: 0.07, insetYFrac: 0.05 },
-    candidates: { digitMargin: 1, font: 18, hFrac: 0.67, wFrac: 0.84, xFrac: 0.08, yFrac: 0.31 }, gridLeftIn: 0.65,
-    gridSizeIn: 6.05, gridTopIn: 1.10, metaSz: 14,
-    solve: { colGapIn: 0.25, cols: 2, colWIn: 2.85, font: 16, leftIn: 7.05 }, thickPt: 6.5,
+    axisFont: 28,
+    axisLabelH: 0.40,
+    axisLabelW: 0.35,
+    axisSideOffset: 0.42,
+    axisTopOffset: 0.49,
+    cage: { boxHFrac: 0.28, boxWFrac: 0.65, font: 20, insetXFrac: 0.07, insetYFrac: 0.05 },
+    candidates: { digitMargin: 1, font: 18, hFrac: 0.67, wFrac: 0.84, xFrac: 0.08, yFrac: 0.31 },
+    gridLeftIn: 0.65,
+    gridSizeIn: 6.05,
+    gridTopIn: 1.10,
+    metaSz: 14,
+    solve: { colGapIn: 0.25, cols: 2, colWIn: 2.85, font: 16, leftIn: 7.05 },
+    thickPt: 6.5,
     thinPt: 1.0,
     titleHIn: 0.55,
     titleSz: 22,
     value: { font: 32, hFrac: 0.77, yFrac: 0.23 }
   },
   8: {
-    axisFont: 28, axisLabelH: 0.40, axisLabelW: 0.35,
-    axisSideOffset: 0.42, axisTopOffset: 0.49, cage: { boxHFrac: 0.26, boxWFrac: 0.65, font: 18, insetXFrac: 0.07, insetYFrac: 0.05 },
-    candidates: { digitMargin: 1, font: 17, hFrac: 0.69, wFrac: 0.84, xFrac: 0.08, yFrac: 0.29 }, gridLeftIn: 0.65,
-    gridSizeIn: 6.20, gridTopIn: 1.10, metaSz: 14,
-    solve: { colGapIn: 0.25, cols: 2, colWIn: 2.80, font: 16, leftIn: 7.15 }, thickPt: 6.5,
+    axisFont: 28,
+    axisLabelH: 0.40,
+    axisLabelW: 0.35,
+    axisSideOffset: 0.42,
+    axisTopOffset: 0.49,
+    cage: { boxHFrac: 0.26, boxWFrac: 0.65, font: 18, insetXFrac: 0.07, insetYFrac: 0.05 },
+    candidates: { digitMargin: 1, font: 17, hFrac: 0.69, wFrac: 0.84, xFrac: 0.08, yFrac: 0.29 },
+    gridLeftIn: 0.65,
+    gridSizeIn: 6.20,
+    gridTopIn: 1.10,
+    metaSz: 14,
+    solve: { colGapIn: 0.25, cols: 2, colWIn: 2.80, font: 16, leftIn: 7.15 },
+    thickPt: 6.5,
     thinPt: 1.0,
     titleHIn: 0.55,
     titleSz: 22,
     value: { font: 30, hFrac: 0.78, yFrac: 0.22 }
   },
   9: {
-    axisFont: 28, axisLabelH: 0.40, axisLabelW: 0.35,
-    axisSideOffset: 0.42, axisTopOffset: 0.49, cage: { boxHFrac: 0.24, boxWFrac: 0.70, font: 16, insetXFrac: 0.07, insetYFrac: 0.05 },
-    candidates: { digitMargin: 0, font: 14, hFrac: 0.71, wFrac: 0.88, xFrac: 0.09, yFrac: 0.27 }, gridLeftIn: 0.65,
-    gridSizeIn: 6.30, gridTopIn: 1.10, metaSz: 14,
-    solve: { colGapIn: 0.25, cols: 2, colWIn: 2.75, font: 16, leftIn: 7.25 }, thickPt: 6.5,
+    axisFont: 28,
+    axisLabelH: 0.40,
+    axisLabelW: 0.35,
+    axisSideOffset: 0.42,
+    axisTopOffset: 0.49,
+    cage: { boxHFrac: 0.24, boxWFrac: 0.70, font: 16, insetXFrac: 0.07, insetYFrac: 0.05 },
+    candidates: { digitMargin: 0, font: 14, hFrac: 0.71, wFrac: 0.88, xFrac: 0.09, yFrac: 0.27 },
+    gridLeftIn: 0.65,
+    gridSizeIn: 6.30,
+    gridTopIn: 1.10,
+    metaSz: 14,
+    solve: { colGapIn: 0.25, cols: 2, colWIn: 2.75, font: 16, leftIn: 7.25 },
+    thickPt: 6.5,
     thinPt: 1.0,
     titleHIn: 0.55,
     titleSz: 22,
@@ -414,8 +462,7 @@ function drawJoinSquares(
   horizontalBounds: boolean[][]
 ): void {
   const cellWidth = gridSize / gridDimension;
-  const clamp = (value: number, lo: number, hi: number): number =>
-    Math.max(lo, Math.min(hi, value));
+  const clamp = (value: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, value));
 
   // Draw join squares at every interior vertex where any cage boundary touches (spec: "if any of ... is true")
   for (let vertexRow = 1; vertexRow < gridDimension; vertexRow++) {
@@ -492,8 +539,7 @@ function drawThinGrid(
       }
       const x = gridLeft + c * cellWidth;
       const y = gridTop + r * cellWidth;
-      const rect = slide.insertShape(SlidesApp.ShapeType.RECTANGLE,
-        pt(x - halfThinWidth), pt(y), pt(thinWidth), pt(cellWidth));
+      const rect = slide.insertShape(SlidesApp.ShapeType.RECTANGLE, pt(x - halfThinWidth), pt(y), pt(thinWidth), pt(cellWidth));
       rect.getFill().setSolidFill(THIN_GRAY);
       rect.getBorder().setTransparent();
     }
@@ -507,8 +553,7 @@ function drawThinGrid(
       }
       const x = gridLeft + c * cellWidth;
       const y = gridTop + r * cellWidth;
-      const rect = slide.insertShape(SlidesApp.ShapeType.RECTANGLE,
-        pt(x), pt(y - halfThinWidth), pt(cellWidth), pt(thinWidth));
+      const rect = slide.insertShape(SlidesApp.ShapeType.RECTANGLE, pt(x), pt(y - halfThinWidth), pt(cellWidth), pt(thinWidth));
       rect.getFill().setSolidFill(THIN_GRAY);
       rect.getBorder().setTransparent();
     }
@@ -650,8 +695,7 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   const titleTop = pt(in2pt(0.05));
   const titleWidth = pt(REF_W - in2pt(0.4));
   const titleHeight = pt(in2pt(profile.titleHIn));
-  const titleBox = slide.insertTextBox(`${title}\n${meta}`,
-    titleLeft, titleTop, titleWidth, titleHeight);
+  const titleBox = slide.insertTextBox(`${title}\n${meta}`, titleLeft, titleTop, titleWidth, titleHeight);
   const titleRange = titleBox.getText();
   titleRange.getRange(0, title.length).getTextStyle()
     .setFontFamily('Segoe UI').setFontSize(profile.titleSz).setBold(true).setForegroundColor(BLACK);
@@ -672,9 +716,7 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
       const ref = cellRefA1(r, c);
 
       // VALUE box
-      const valueBox = slide.insertTextBox(' ',
-        pt(cellLeft), pt(cellTop + valueProfile.yFrac * cellWidth),
-        pt(cellWidth), pt(valueProfile.hFrac * cellWidth));
+      const valueBox = slide.insertTextBox(' ', pt(cellLeft), pt(cellTop + valueProfile.yFrac * cellWidth), pt(cellWidth), pt(valueProfile.hFrac * cellWidth));
       valueBox.setTitle(`VALUE_${ref}`);
       valueBox.getText().getTextStyle()
         .setFontFamily('Segoe UI').setFontSize(valueProfile.font).setBold(true).setForegroundColor(VALUE_GRAY);
@@ -683,9 +725,13 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
 
       // CANDIDATES box (extend height to compensate for default text box padding;
       // BOTTOM-anchored text is pushed up by bottom padding, extra height prevents upward overflow)
-      const candidatesBox = slide.insertTextBox(' ',
-        pt(cellLeft + candidatesProfile.xFrac * cellWidth), pt(cellTop + candidatesProfile.yFrac * cellWidth),
-        pt(candidatesProfile.wFrac * cellWidth), pt(candidatesProfile.hFrac * cellWidth + 2 * TEXT_BOX_TOP_PAD_PT));
+      const candidatesBox = slide.insertTextBox(
+        ' ',
+        pt(cellLeft + candidatesProfile.xFrac * cellWidth),
+        pt(cellTop + candidatesProfile.yFrac * cellWidth),
+        pt(candidatesProfile.wFrac * cellWidth),
+        pt(candidatesProfile.hFrac * cellWidth + 2 * TEXT_BOX_TOP_PAD_PT)
+      );
       candidatesBox.setTitle(`CANDIDATES_${ref}`);
       candidatesBox.getText().getTextStyle()
         .setFontFamily(CANDIDATES_FONT).setFontSize(candidatesProfile.font).setBold(false).setForegroundColor(CAND_DARK_RED);
@@ -705,8 +751,7 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   drawCageLabels(slide, gridLeft, gridTop, cellWidth, cages, operations, profile);
 
   // ── Footer ──
-  const footerBox = slide.insertTextBox(FOOTER_TEXT,
-    pt(in2pt(0.4)), pt(REF_H - in2pt(0.45)), pt(REF_W - in2pt(0.8)), pt(in2pt(0.3)));
+  const footerBox = slide.insertTextBox(FOOTER_TEXT, pt(in2pt(0.4)), pt(REF_H - in2pt(0.45)), pt(REF_W - in2pt(0.8)), pt(in2pt(0.3)));
   footerBox.getText().getTextStyle()
     .setFontFamily('Segoe UI').setFontSize(14).setBold(false).setForegroundColor(FOOTER_COLOR);
   footerBox.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.END);
@@ -717,8 +762,7 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   const columnWidth = in2pt(solveProfile.colWIn);
   const columnGap = in2pt(solveProfile.colGapIn);
   for (let i = 0; i < solveProfile.cols; i++) {
-    const noteBox = slide.insertTextBox(' ',
-      pt(notesLeft + i * (columnWidth + columnGap)), pt(gridTop), pt(columnWidth), pt(gridSize));
+    const noteBox = slide.insertTextBox(' ', pt(notesLeft + i * (columnWidth + columnGap)), pt(gridTop), pt(columnWidth), pt(gridSize));
     noteBox.setTitle(`SOLVE_NOTES_COL${String(i + 1)}`);
     noteBox.getText().getTextStyle()
       .setFontFamily('Segoe UI').setFontSize(solveProfile.font).setBold(false).setForegroundColor(VALUE_GRAY);
@@ -743,7 +787,11 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
     scaleSlideElements(slide, finalScale);
   }
 
-  Logger.log(`Import complete: ${String(gridDimension)}x${String(gridDimension)} grid, pageW=${String(pageWidth)} pageH=${String(pageHeight)} scale=${finalScale.toFixed(3)}`);
+  Logger.log(
+    `Import complete: ${String(gridDimension)}x${String(gridDimension)} grid, pageW=${String(pageWidth)} pageH=${String(pageHeight)} scale=${
+      finalScale.toFixed(3)
+    }`
+  );
 }
 
 function in2pt(inches: number): number {
@@ -781,9 +829,14 @@ function onOpen(): void {
 
 function opSymbol(op: string): string {
   const map: Record<string, string> = {
-    '-': '\u2212', '*': 'x', '/': '/',
-    '+': '+', '\u00f7': '/', '\u2212': '\u2212',
-    'x': 'x', 'X': 'x'
+    '-': '\u2212',
+    '*': 'x',
+    '/': '/',
+    '+': '+',
+    '\u00f7': '/',
+    '\u2212': '\u2212',
+    'x': 'x',
+    'X': 'x'
   };
   return map[op.trim()] ?? op.trim();
 }

@@ -12,14 +12,12 @@ export default defineConfig(
   {
     ignores: ['**/*.js', '**/node_modules/']
   },
-
   // ── Base configs ──
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   commentsConfigs.recommended,
   perfectionist.configs['recommended-alphabetical'],
-
   // ── Stylistic ──
   stylistic.configs.customize({
     arrowParens: true,
@@ -27,7 +25,6 @@ export default defineConfig(
     commaDangle: 'never',
     semi: true
   }),
-
   // ── Project rules ──
   {
     languageOptions: {
