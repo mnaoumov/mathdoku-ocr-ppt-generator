@@ -5,6 +5,7 @@
  *   A1:=1          -- set final value
  *   A1:234         -- set candidates
  *   A1:-567        -- strikethrough candidates
+ *   A1:x           -- clear cell (value + candidates)
  *   (B2 C3):234   -- multiple cells
  *   @D4:-567       -- expand cage
  */
@@ -16,7 +17,11 @@ interface CandidatesOp {
   type: 'candidates';
 }
 
-type CellOperation = CandidatesOp | StrikeOp | ValueOp;
+type CellOperation = CandidatesOp | ClearOp | StrikeOp | ValueOp;
+
+interface ClearOp {
+  type: 'clear';
+}
 
 interface EnterCommand {
   cellRefs: string[];
@@ -110,6 +115,10 @@ function applyOps(
   switch (ops.type) {
     case 'candidates':
       applyGreenCandidates(slide, cellRef, ops.digits, gridSize);
+      break;
+    case 'clear':
+      clearShapeText(slide, `VALUE_${cellRef}`);
+      clearShapeText(slide, `CANDIDATES_${cellRef}`);
       break;
     case 'strike':
       applyGreenStrikethrough(slide, cellRef, ops.digits);
@@ -280,6 +289,10 @@ function parseInput(input: string): EnterCommand[] {
 }
 
 function parseOperation(text: string, cellCount: number): CellOperation {
+  if (text.toLowerCase() === 'x') {
+    return { type: 'clear' };
+  }
+
   if (text.startsWith('=')) {
     const digit = text.substring(1);
     if (!/^[1-9]$/.test(digit)) {
