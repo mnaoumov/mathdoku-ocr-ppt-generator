@@ -888,6 +888,12 @@ function runInit(): void {
   importPuzzle(puzzleJson, pres.getId());
   props.setProperty('mathdokuInitialized', 'true');
   addMathdokuMenu();
+
+  // Navigate to the newly created first slide
+  const firstSlide = pres.getSlides()[0];
+  if (firstSlide) {
+    firstSlide.selectAsCurrentPage();
+  }
 }
 
 function scaleSlideElements(slide: GoogleAppsScript.Slides.Slide, scale: number): void {
