@@ -175,6 +175,22 @@ def _detect_line_positions(
     h_peaks = find_peaks(h_proj)
     v_peaks = find_peaks(v_proj)
     _dbg(f"Raw peaks: {len(h_peaks)}h {h_peaks}, {len(v_peaks)}v {v_peaks}")
+
+    # Ensure grid edges are represented in peak lists.  The outer border
+    # should always produce a peak at (near) 0 and (near) total-1, but
+    # faint/dotted lines or image artifacts can cause them to be missed.
+    # Missing edge peaks throw off spacing calculations for grid-size
+    # scoring and line fitting.
+    edge_gap = max(gh, gw) * 0.08
+    if h_peaks and h_peaks[-1] < gh - 1 - edge_gap:
+        h_peaks.append(gh - 1)
+    if v_peaks and v_peaks[-1] < gw - 1 - edge_gap:
+        v_peaks.append(gw - 1)
+    if h_peaks and h_peaks[0] > edge_gap:
+        h_peaks.insert(0, 0)
+    if v_peaks and v_peaks[0] > edge_gap:
+        v_peaks.insert(0, 0)
+
     return h_peaks, v_peaks
 
 
@@ -491,6 +507,7 @@ def _run_tesseract(padded: np.ndarray, configs: list[str]) -> str:
         text = text.replace("X", "x")
         text = text.replace("O", "0").replace("o", "0").replace("Q", "0")
         text = text.replace("l", "1").replace("I", "1")
+        text = text.rstrip(".,;:'\"")
         raw_texts.append(text)
         m = _LABEL_RE.match(text)
         if not m:
@@ -519,26 +536,20 @@ def _run_tesseract(padded: np.ndarray, configs: list[str]) -> str:
     if not results:
         return best_raw
 
-    # Group results by digit-string length, then pick the best group.
-    # Prefer the longest digit string (more complete reading), but only
-    # if it has at least 2 votes.  A single outlier "11+" shouldn't beat
-    # many "1+" results, but a genuine "1470x" seen by 2+ configs should
-    # beat "470x".
-    from itertools import groupby
+    # Group results by digit-string length, pick the best group.
+    # Use total vote count per length group as the primary criterion
+    # (the reading most configs agree on is most likely correct).
+    # Break ties in favor of longer strings (more complete reading).
     digit_counts = Counter(d for d, _ in results)
     by_len: dict[int, list[str]] = {}
-    for d, cnt in digit_counts.items():
+    for d in digit_counts:
         by_len.setdefault(len(d), []).append(d)
 
-    best_digits = ""
-    for length in sorted(by_len, reverse=True):
-        candidates = by_len[length]
-        top = max(candidates, key=lambda d: digit_counts[d])
-        if digit_counts[top] >= 2 or length == min(by_len):
-            best_digits = top
-            break
-    if not best_digits:
-        best_digits = digit_counts.most_common(1)[0][0]
+    def _len_votes(length: int) -> int:
+        return sum(digit_counts[d] for d in by_len[length])
+
+    best_length = max(by_len, key=lambda l: (_len_votes(l), l))
+    best_digits = max(by_len[best_length], key=lambda d: digit_counts[d])
 
     # Include operator if any result with this digit string has one
     # Exclude '?' from voting - it's a fallback marker, not a real operator
@@ -810,40 +821,39 @@ def _read_cage_labels(
         else:
             results.append(("?", None))
 
-    # Post-processing pass 1: For small-cell grids, retry short-value labels
-    # at 3x individual upscale from original gray to recover leading digits
-    # lost to border artifacts in the 2x pre-upscale.
-    if grid_up is not None:
-        for idx in range(len(results)):
-            value, op = results[idx]
-            if not value or value == "?" or len(value) != 2:
-                continue  # only retry labels with exactly 2 digits
-            tl_r, tl_c = cages[idx][0]
-            cx_r, cy_r = v_pos[tl_c], h_pos[tl_r]
-            cw_r = v_pos[tl_c + 1] - cx_r
-            ch_r = h_pos[tl_r + 1] - cy_r
-            for retry_m in (3, 4):
-                rx = gx + cx_r + retry_m
-                ry = gy + cy_r + retry_m
-                rw = int(cw_r * 0.95)
-                rh = int(ch_r * 0.45)
-                crop_raw = gray[ry:ry + rh, rx:rx + rw]
-                if crop_raw.size == 0 or crop_raw.shape[0] < 5:
+    # Post-processing pass 1: retry short-value labels at higher upscale
+    # from original gray to recover leading digits lost to border artifacts.
+    for idx in range(len(results)):
+        value, op = results[idx]
+        if not value or value == "?" or len(value) != 2:
+            continue  # only retry labels with exactly 2 digits
+        tl_r, tl_c = cages[idx][0]
+        cx_r, cy_r = v_pos[tl_c], h_pos[tl_r]
+        cw_r = v_pos[tl_c + 1] - cx_r
+        ch_r = h_pos[tl_r + 1] - cy_r
+        for retry_m in (3, 4):
+            rx = gx + cx_r + retry_m
+            ry = gy + cy_r + retry_m
+            rw = int(cw_r * 0.95)
+            rh = int(ch_r * 0.45)
+            crop_raw = gray[ry:ry + rh, rx:rx + rw]
+            if crop_raw.size == 0 or crop_raw.shape[0] < 5:
+                continue
+            scale = max(3, 80 // crop_raw.shape[0])
+            crop_hi = cv2.resize(crop_raw, None, fx=scale, fy=scale,
+                                 interpolation=cv2.INTER_CUBIC)
+            raw_hi = _ocr_crop(crop_hi)
+            m_hi = _LABEL_RE.match(raw_hi)
+            if m_hi and len(m_hi.group(1)) > len(value):
+                # Accept if same operator or new operator is compatible
+                hi_op = m_hi.group(2)
+                if op is not None and hi_op is not None and hi_op != op:
                     continue
-                crop_hi = cv2.resize(crop_raw, None, fx=3, fy=3,
-                                     interpolation=cv2.INTER_CUBIC)
-                raw_hi = _ocr_crop(crop_hi)
-                m_hi = _LABEL_RE.match(raw_hi)
-                if m_hi and len(m_hi.group(1)) > len(value):
-                    # Accept if same operator or new operator is compatible
-                    hi_op = m_hi.group(2)
-                    if op is not None and hi_op is not None and hi_op != op:
-                        continue
-                    new_op = hi_op or op
-                    _dbg(f"  Cage {idx}: 3x retry {value}{op or ''}"
-                         f" -> {m_hi.group(1)}{new_op or ''}")
-                    results[idx] = (m_hi.group(1), new_op)
-                    break
+                new_op = hi_op or op
+                _dbg(f"  Cage {idx}: retry {value}{op or ''}"
+                     f" -> {m_hi.group(1)}{new_op or ''}")
+                results[idx] = (m_hi.group(1), new_op)
+                break
 
     # Post-processing pass 2: enforce operators for multi-cell cages.
     # Only applies when the puzzle SHOWS operations (most cages already have one).

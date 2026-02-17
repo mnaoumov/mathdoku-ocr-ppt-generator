@@ -11,7 +11,8 @@
     "makeMathdokuSlides:fast": "jiti scripts/makeMathdokuSlides.ts",
     "makeMathdokuSlides": "npm run build && npm run makeMathdokuSlides:fast",
     "ocrMathdoku": "uv run ocr/ocr_mathdoku.py",
-    "spellcheck": "cspell . --no-progress"
+    "spellcheck": "cspell . --no-progress",
+    "test": "uv run pytest"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4",
