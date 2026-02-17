@@ -823,10 +823,14 @@ def _read_cage_labels(
 
     # Post-processing pass 1: retry short-value labels at higher upscale
     # from original gray to recover leading digits lost to border artifacts.
+    # For small-cell grids (pre-upscaled), retry 1-2 digit values.
+    # For normal grids, only retry 1-digit values (2-digit retries can
+    # produce worse results when the initial read was already good).
+    max_retry_len = 2 if grid_up is not None else 1
     for idx in range(len(results)):
         value, op = results[idx]
-        if not value or value == "?" or len(value) != 2:
-            continue  # only retry labels with exactly 2 digits
+        if not value or value == "?" or len(value) > max_retry_len:
+            continue
         tl_r, tl_c = cages[idx][0]
         cx_r, cy_r = v_pos[tl_c], h_pos[tl_r]
         cw_r = v_pos[tl_c + 1] - cx_r
