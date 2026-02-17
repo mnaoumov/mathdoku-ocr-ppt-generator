@@ -14,6 +14,9 @@ cages:
 - cells: [G1, F2, G2, F3, G3]
   value: 525
   op: x
+- cells: [A2, B2]
+  value: 8
+  op: x
 - cells: [A3, B3, C3, A4]
   value: 108
   op: x
@@ -32,7 +35,7 @@ cages:
 - cells: [D5, E5]
   value: 2
   op: '-'
-- cells: [D6, E6, F7, D7]
+- cells: [D6, E6, C7, D7]
   value: 13
   op: +
 - cells: [A7, B7]

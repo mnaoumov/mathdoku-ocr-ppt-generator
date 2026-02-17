@@ -10,7 +10,7 @@ cages:
   value: 20
 - cells: [E2]
   value: 2
-- cells: [B3, D3, B4, C4, C5]
+- cells: [B3, D3, B4, C4, D4]
   value: 360
 - cells: [C3]
   value: 1

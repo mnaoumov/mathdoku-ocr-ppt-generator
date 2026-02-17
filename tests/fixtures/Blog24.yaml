@@ -5,7 +5,7 @@ cages:
 - cells: [A1, B1, A2]
   value: 72
   op: x
-- cells: [C1, D1, C2]
+- cells: [C1, D1, D2]
   value: 13
   op: +
 - cells: [E1, E2]
