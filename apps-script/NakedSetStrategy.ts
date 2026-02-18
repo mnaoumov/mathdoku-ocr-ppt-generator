@@ -1,79 +1,59 @@
 /**
- * NakedSetStrategy.ts -- naked set of size k: k cells whose combined candidates = k digits.
+ * NakedSetStrategy.ts -- naked set of size k: k cells whose combined candidates = k values.
  */
 
 class NakedSetStrategy implements Strategy {
-  private readonly k: number;
-
-  public constructor(k: number) {
-    this.k = k;
+  public constructor(private readonly subsetSize: number) {
   }
 
-  public tryApply(puzzle: Puzzle): null | SolveChange[] {
-    const candidateMap: Record<string, string[]> = {};
-    for (let r = 0; r < puzzle.size; r++) {
-      for (let c = 0; c < puzzle.size; c++) {
-        const ref = cellRefA1(r, c);
-        if (puzzle.getCellValue(ref)) {
-          continue;
-        }
-        const cands = puzzle.getCellCandidates(ref);
-        if (cands.length > 0) {
-          candidateMap[ref] = cands;
-        }
-      }
-    }
-
-    const allEliminations = new Map<string, Set<string>>();
+  public tryApply(puzzle: Puzzle): CellChange[] | null {
+    const allEliminations = new Map<Cell, Set<number>>();
     for (const house of puzzle.houses) {
-      const filtered = house.filter((ref) => Boolean(candidateMap[ref]));
-      if (filtered.length > this.k) {
-        scanHouseForNakedSet(filtered, this.k, candidateMap, allEliminations);
+      const filtered = house.cells.filter((cell) => !cell.isSolved && cell.candidateCount > 0);
+      if (filtered.length > this.subsetSize) {
+        this.scanHouseForNakedSet(filtered, allEliminations);
       }
     }
 
-    const result: SolveChange[] = [];
-    for (const [ref, digits] of allEliminations) {
-      result.push({ cellRef: ref, digits: [...digits].sort().join(''), type: 'strike' });
+    const result: CellChange[] = [];
+    for (const [cell, values] of allEliminations) {
+      result.push(new CandidatesStrikethrough(cell, [...values].sort((a, b) => a - b)));
     }
-    result.sort((a, b) => a.cellRef.localeCompare(b.cellRef));
+    result.sort((a, b) => a.cell.ref.localeCompare(b.cell.ref));
     return result.length > 0 ? result : null;
   }
-}
 
-function scanHouseForNakedSet(
-  house: readonly string[],
-  k: number,
-  candidateMap: Record<string, string[]>,
-  allEliminations: Map<string, Set<string>>
-): void {
-  for (const subset of generateSubsets(house, k)) {
-    const union = new Set<string>();
-    for (const ref of subset) {
-      for (const d of ensureNonNullable(candidateMap[ref])) {
-        union.add(d);
+  private scanHouseForNakedSet(
+    cells: readonly Cell[],
+    allEliminations: Map<Cell, Set<number>>
+  ): void {
+    for (const subset of generateSubsets(cells, this.subsetSize)) {
+      const union = new Set<number>();
+      for (const cell of subset) {
+        for (const v of cell.getCandidates()) {
+          union.add(v);
+        }
       }
-    }
 
-    if (union.size !== k) {
-      continue;
-    }
-
-    const subsetSet = new Set(subset);
-    for (const ref of house) {
-      if (subsetSet.has(ref)) {
+      if (union.size !== this.subsetSize) {
         continue;
       }
-      const cands = ensureNonNullable(candidateMap[ref]);
-      const toEliminate = cands.filter((d) => union.has(d));
-      if (toEliminate.length > 0) {
-        let existing = allEliminations.get(ref);
-        if (!existing) {
-          existing = new Set<string>();
-          allEliminations.set(ref, existing);
+
+      const subsetSet = new Set(subset);
+      for (const cell of cells) {
+        if (subsetSet.has(cell)) {
+          continue;
         }
-        for (const d of toEliminate) {
-          existing.add(d);
+        const toEliminate = cell.getCandidates().filter((v) => union.has(v));
+        if (toEliminate.length > 0) {
+          let existing = allEliminations.get(cell);
+          if (!existing) {
+            existing = new Set<number>();
+            allEliminations.set(cell, existing);
+          }
+          for (const v of toEliminate) {
+            existing.add(v);
+          }
         }
       }
     }

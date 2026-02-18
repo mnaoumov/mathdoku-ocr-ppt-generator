@@ -1,35 +1,46 @@
 /**
  * Puzzle.ts -- Business logic layer (zero GoogleAppsScript references).
  *
- * Contains: Puzzle class (model + strategy loop + Enter parsing),
+ * Contains: Cell, House, Cage domain classes, CellChange hierarchy,
+ * Puzzle class (model + strategy loop + Enter parsing),
  * PuzzleRenderer / Strategy interfaces, shared types, pure utilities.
  */
 
-interface Cage {
+interface CageRaw {
   readonly cells: readonly string[];
   readonly label?: string;
-  readonly op?: string;
+  readonly operator?: string;
   readonly value?: number;
 }
 
-interface CandidatesOp {
-  readonly digits: string;
+interface CandidatesOperation {
   readonly type: 'candidates';
+  readonly values: readonly number[];
 }
 
-type CellOperation = CandidatesOp | ClearOp | StrikeOp | ValueOp;
+interface CellCandidatesSetter {
+  readonly cell: Cell;
+  readonly values: readonly number[];
+}
+
+type CellOperation = CandidatesOperation | ClearanceOperation | StrikethroughOperation | ValueOperation;
 
 interface CellRef {
-  readonly c: number;
-  readonly r: number;
+  readonly columnId: number;
+  readonly rowId: number;
 }
 
-interface ClearOp {
+interface CellValueSetter {
+  readonly cell: Cell;
+  readonly value: number;
+}
+
+interface ClearanceOperation {
   readonly type: 'clear';
 }
 
 interface EnterCommand {
-  readonly cellRefs: readonly string[];
+  readonly cells: readonly Cell[];
   readonly operation: CellOperation;
 }
 
@@ -38,8 +49,10 @@ interface GridBoundaries {
   readonly verticalBounds: readonly (readonly boolean[])[];
 }
 
+type HouseType = 'column' | 'row';
+
 interface PuzzleJson {
-  readonly cages: readonly Cage[];
+  readonly cages: readonly CageRaw[];
   readonly meta?: string;
   readonly operations?: boolean;
   readonly size: number;
@@ -47,84 +60,316 @@ interface PuzzleJson {
 }
 
 interface PuzzleRenderer {
+  beginPendingRender(gridSize: number): void;
   renderCommittedChanges(gridSize: number): void;
-  renderPendingChanges(changes: readonly SolveChange[], gridSize: number): void;
+  renderPendingCandidates(change: CandidatesChange): void;
+  renderPendingClearance(change: CellClearance): void;
+  renderPendingStrikethrough(change: CandidatesStrikethrough): void;
+  renderPendingValue(change: ValueChange): void;
 }
 
 interface PuzzleState {
-  readonly cages: readonly Cage[];
+  readonly cages: readonly CageRaw[];
   readonly operations: boolean;
   readonly size: number;
 }
 
-type SolveChange =
-  | { readonly cellRef: string; readonly digits: string; readonly type: 'candidates' }
-  | { readonly cellRef: string; readonly digits: string; readonly type: 'strike' }
-  | { readonly cellRef: string; readonly digits: string; readonly type: 'value' }
-  | { readonly cellRef: string; readonly type: 'clear' };
-
 interface Strategy {
-  tryApply(puzzle: Puzzle): null | readonly SolveChange[];
+  tryApply(puzzle: Puzzle): null | readonly CellChange[];
 }
 
-interface StrikeOp {
-  readonly digits: string;
-  readonly type: 'strike';
+interface StrikethroughOperation {
+  readonly type: 'strikethrough';
+  readonly values: readonly number[];
 }
 
-interface ValueOp {
-  readonly digit: string;
+interface ValueOperation {
   readonly type: 'value';
+  readonly value: number;
 }
 
-interface ValueSet {
-  readonly cellRef: string;
-  readonly digit: string;
+class Cage {
+  public get topLeft(): Cell {
+    return ensureNonNullable(this.cells[0]);
+  }
+
+  public constructor(
+    public readonly id: number,
+    public readonly cells: readonly Cell[],
+    public readonly label: string | undefined,
+    public readonly operator: string | undefined,
+    public readonly value: number | undefined
+  ) {
+  }
+
+  public contains(cell: Cell): boolean {
+    return this.cells.includes(cell);
+  }
+
+  public toString(): string {
+    const labelPart = this.label ?? '';
+    const cellRefs = this.cells.map(String).join(',');
+    return `Cage(${labelPart} ${cellRefs})`;
+  }
+}
+
+abstract class CellChange {
+  protected constructor(public readonly cell: Cell) {
+  }
+
+  public abstract applyToModel(): void;
+  public abstract renderPending(renderer: PuzzleRenderer): void;
+}
+
+class CandidatesChange extends CellChange {
+  public constructor(cell: Cell, public readonly values: readonly number[]) {
+    super(cell);
+  }
+
+  public applyToModel(): void {
+    this.cell.setCandidates(this.values);
+    this.cell.clearValue();
+  }
+
+  public renderPending(renderer: PuzzleRenderer): void {
+    renderer.renderPendingCandidates(this);
+  }
+}
+
+class CandidatesStrikethrough extends CellChange {
+  public constructor(cell: Cell, public readonly values: readonly number[]) {
+    super(cell);
+  }
+
+  public applyToModel(): void {
+    for (const v of this.values) {
+      this.cell.removeCandidate(v);
+    }
+  }
+
+  public renderPending(renderer: PuzzleRenderer): void {
+    renderer.renderPendingStrikethrough(this);
+  }
+}
+
+class Cell {
+  public readonly ref: string;
+  public get cage(): Cage {
+    return this.puzzle.getCage(this.cageIndex + 1);
+  }
+
+  public get candidateCount(): number {
+    return this._candidates.size;
+  }
+
+  public get column(): House {
+    return this.puzzle.getColumn(this.colIndex + 1);
+  }
+
+  public get isSolved(): boolean {
+    return this._value !== null;
+  }
+
+  public get peers(): readonly Cell[] {
+    if (!this._peers) {
+      const result: Cell[] = [];
+      for (const cell of this.row.cells) {
+        if (cell !== this) {
+          result.push(cell);
+        }
+      }
+      for (const cell of this.column.cells) {
+        if (cell !== this) {
+          result.push(cell);
+        }
+      }
+      this._peers = result;
+    }
+    return this._peers;
+  }
+
+  public get peerValues(): readonly number[] {
+    const result: number[] = [];
+    for (const peer of this.peers) {
+      if (peer.value !== null) {
+        result.push(peer.value);
+      }
+    }
+    return result;
+  }
+
+  public get row(): House {
+    return this.puzzle.getRow(this.rowIndex + 1);
+  }
+
+  public get value(): null | number {
+    return this._value;
+  }
+
+  private readonly _candidates = new Set<number>();
+  private _peers: null | readonly Cell[] = null;
+
+  private _value: null | number = null;
+
+  public constructor(
+    private readonly puzzle: Puzzle,
+    private readonly rowIndex: number,
+    private readonly colIndex: number,
+    private readonly cageIndex: number
+  ) {
+    this.rowIndex = rowIndex;
+    this.colIndex = colIndex;
+    this.cageIndex = cageIndex;
+    this.ref = cellRefA1(rowIndex, colIndex);
+  }
+
+  public addCandidate(value: number): void {
+    this._candidates.add(value);
+  }
+
+  public clearCandidates(): void {
+    this._candidates.clear();
+  }
+
+  public clearValue(): void {
+    this._value = null;
+  }
+
+  public getCandidates(): number[] {
+    return [...this._candidates].sort((a, b) => a - b);
+  }
+
+  public hasCandidate(value: number): boolean {
+    return this._candidates.has(value);
+  }
+
+  public removeCandidate(value: number): void {
+    this._candidates.delete(value);
+  }
+
+  public setCandidates(values: Iterable<number>): void {
+    this._candidates.clear();
+    for (const v of values) {
+      this._candidates.add(v);
+    }
+  }
+
+  public setValue(value: number): void {
+    this._value = value;
+  }
+
+  public toString(): string {
+    return this.ref;
+  }
+}
+
+class CellClearance extends CellChange {
+  public constructor(cell: Cell) {
+    super(cell);
+  }
+
+  public applyToModel(): void {
+    this.cell.clearValue();
+    this.cell.clearCandidates();
+  }
+
+  public renderPending(renderer: PuzzleRenderer): void {
+    renderer.renderPendingClearance(this);
+  }
+}
+
+class House {
+  public readonly label: string;
+
+  public constructor(public readonly type: HouseType, public readonly id: number, public readonly cells: readonly Cell[]) {
+    this.label = type === 'row' ? String(id) : String.fromCharCode(CHAR_CODE_A + id - 1);
+  }
+
+  public getCell(id: number): Cell {
+    return ensureNonNullable(this.cells[id - 1]);
+  }
+
+  public toString(): string {
+    return `${this.type === 'row' ? 'Row' : 'Column'} ${this.label}`;
+  }
 }
 
 class Puzzle {
   public readonly cages: readonly Cage[];
-  public readonly houses: readonly (readonly string[])[];
-  public readonly meta: string;
-  public readonly operations: boolean;
-  public readonly size: number;
-
-  public readonly title: string;
-  private readonly candidates: Map<string, Set<string>>;
-  private readonly renderer: PuzzleRenderer;
+  public readonly cells: readonly Cell[];
+  public readonly columns: readonly House[];
+  public readonly houses: readonly House[];
+  public readonly rows: readonly House[];
+  private pendingChanges: readonly CellChange[] = [];
   private readonly strategies: readonly Strategy[];
-  private readonly values: Map<string, string>;
 
   public constructor(
-    renderer: PuzzleRenderer,
-    size: number,
-    cages: readonly Cage[],
-    operations: boolean,
-    title: string,
-    meta: string,
-    initialValues?: Map<string, string>,
-    initialCandidates?: Map<string, Set<string>>
+    private readonly renderer: PuzzleRenderer,
+    public readonly size: number,
+    cagesRaw: readonly CageRaw[],
+    public readonly operations: boolean,
+    public readonly title: string,
+    public readonly meta: string,
+    initialValues?: Map<string, number>,
+    initialCandidates?: Map<string, Set<number>>
   ) {
-    this.renderer = renderer;
-    this.size = size;
-    this.cages = cages;
-    this.operations = operations;
-    this.title = title;
-    this.meta = meta;
-    this.values = initialValues ?? new Map<string, string>();
-    this.candidates = initialCandidates ?? new Map<string, Set<string>>();
-    const houses: string[][] = [];
-    for (let i = 0; i < size; i++) {
-      const row: string[] = [];
-      const col: string[] = [];
-      for (let j = 0; j < size; j++) {
-        row.push(cellRefA1(i, j));
-        col.push(cellRefA1(j, i));
+    const cellToCageIndex: Record<string, number> = {};
+    for (let i = 0; i < cagesRaw.length; i++) {
+      const cage = ensureNonNullable(cagesRaw[i]);
+      for (const cellRef of cage.cells) {
+        cellToCageIndex[cellRef] = i;
       }
-      houses.push(row);
-      houses.push(col);
     }
-    this.houses = houses;
+
+    const grid: Cell[][] = [];
+    for (let r = 0; r < size; r++) {
+      const row: Cell[] = [];
+      for (let c = 0; c < size; c++) {
+        const ref = cellRefA1(r, c);
+        const cageIndex = cellToCageIndex[ref];
+        if (cageIndex === undefined) {
+          throw new Error(`Cell ${ref} not found in any cage`);
+        }
+        row.push(new Cell(this, r, c, cageIndex));
+      }
+      grid.push(row);
+    }
+
+    const rows: House[] = [];
+    const columns: House[] = [];
+    for (let i = 0; i < size; i++) {
+      rows.push(new House('row', i + 1, ensureNonNullable(grid[i])));
+      columns.push(new House('column', i + 1, grid.map((gridRow) => ensureNonNullable(gridRow[i]))));
+    }
+    this.rows = rows;
+    this.columns = columns;
+    this.houses = [...rows, ...columns];
+
+    const cages: Cage[] = [];
+    for (let i = 0; i < cagesRaw.length; i++) {
+      const raw = ensureNonNullable(cagesRaw[i]);
+      const cageCells = raw.cells.map((ref) => {
+        const parsed = parseCellRef(ref);
+        return ensureNonNullable(ensureNonNullable(grid[parsed.rowId - 1])[parsed.columnId - 1]);
+      });
+      cageCells.sort((a, b) => a.row.id - b.row.id || a.column.id - b.column.id);
+      cages.push(new Cage(i + 1, cageCells, raw.label, raw.operator, raw.value));
+    }
+    this.cages = cages;
+
+    this.cells = rows.flatMap((row) => [...row.cells]);
+
+    if (initialValues) {
+      for (const [ref, cellValue] of initialValues) {
+        this.getCell(ref).setValue(cellValue);
+      }
+    }
+    if (initialCandidates) {
+      for (const [ref, cands] of initialCandidates) {
+        this.getCell(ref).setCandidates(cands);
+      }
+    }
+
     this.strategies = [
       new SingleCandidateStrategy(),
       new HiddenSingleStrategy(),
@@ -132,9 +377,12 @@ class Puzzle {
     ];
   }
 
-  public applyChanges(changes: readonly SolveChange[]): void {
-    this.renderer.renderPendingChanges(changes, this.size);
-    this.updateModel(changes);
+  public applyChanges(changes: readonly CellChange[]): void {
+    this.pendingChanges = changes;
+    this.renderer.beginPendingRender(this.size);
+    for (const change of changes) {
+      change.renderPending(this.renderer);
+    }
   }
 
   public applyEasyStrategies(): number {
@@ -156,14 +404,12 @@ class Puzzle {
     return totalSteps;
   }
 
-  public buildInitChanges(): SolveChange[][] {
-    const batches: SolveChange[][] = [];
-    const allDigits = Array.from({ length: this.size }, (_, i) => String(i + 1)).join('');
-    const allCandidateChanges: SolveChange[] = [];
-    for (let r = 0; r < this.size; r++) {
-      for (let c = 0; c < this.size; c++) {
-        allCandidateChanges.push({ cellRef: cellRefA1(r, c), digits: allDigits, type: 'candidates' });
-      }
+  public buildInitChanges(): CellChange[][] {
+    const batches: CellChange[][] = [];
+    const allValues = Array.from({ length: this.size }, (_, i) => i + 1);
+    const allCandidateChanges: CellChange[] = [];
+    for (const cell of this.cells) {
+      allCandidateChanges.push(new CandidatesChange(cell, allValues));
     }
     batches.push(allCandidateChanges);
     const cageChanges = buildCageConstraintChanges(this.cages, this.operations, this.size);
@@ -174,7 +420,11 @@ class Puzzle {
   }
 
   public commit(): void {
+    for (const change of this.pendingChanges) {
+      change.applyToModel();
+    }
     this.renderer.renderCommittedChanges(this.size);
+    this.pendingChanges = [];
   }
 
   public enter(input: string): void {
@@ -182,45 +432,45 @@ class Puzzle {
     this.applyChanges(changes);
   }
 
-  public getCageCells(r: number, c: number): readonly string[] {
-    const ref = cellRefA1(r, c);
-    for (const cage of this.cages) {
-      if (cage.cells.includes(ref)) {
-        return cage.cells;
-      }
+  public getCage(id: number): Cage {
+    return ensureNonNullable(this.cages[id - 1]);
+  }
+
+  public getCell(ref: string): Cell;
+  public getCell(rowId: number, columnId: number): Cell;
+  public getCell(refOrRowId: number | string, columnId?: number): Cell {
+    if (typeof refOrRowId === 'string') {
+      const parsed = parseCellRef(refOrRowId);
+      return this.getRow(parsed.rowId).getCell(parsed.columnId);
     }
-    throw new Error(`Cell ${ref} not found in any cage`);
+    return this.getRow(refOrRowId).getCell(ensureNonNullable(columnId));
   }
 
-  public getCellCandidates(cellRef: string): string[] {
-    const cands = this.candidates.get(cellRef);
-    if (!cands) {
-      return [];
-    }
-    return [...cands].sort();
+  public getColumn(id: number): House {
+    return ensureNonNullable(this.columns[id - 1]);
   }
 
-  public getCellValue(cellRef: string): null | string {
-    return this.values.get(cellRef) ?? null;
+  public getRow(id: number): House {
+    return ensureNonNullable(this.rows[id - 1]);
   }
 
-  private buildEnterChanges(input: string): SolveChange[] {
+  private buildEnterChanges(input: string): CellChange[] {
     const commands = this.parseInput(input);
-    const changes: SolveChange[] = [];
+    const changes: CellChange[] = [];
     for (const cmd of commands) {
-      for (const cellRef of cmd.cellRefs) {
+      for (const cell of cmd.cells) {
         switch (cmd.operation.type) {
           case 'candidates':
-            changes.push({ cellRef, digits: cmd.operation.digits, type: 'candidates' });
+            changes.push(new CandidatesChange(cell, cmd.operation.values));
             break;
           case 'clear':
-            changes.push({ cellRef, type: 'clear' });
+            changes.push(new CellClearance(cell));
             break;
-          case 'strike':
-            changes.push({ cellRef, digits: cmd.operation.digits, type: 'strike' });
+          case 'strikethrough':
+            changes.push(new CandidatesStrikethrough(cell, cmd.operation.values));
             break;
           case 'value':
-            changes.push({ cellRef, digits: cmd.operation.digit, type: 'value' });
+            changes.push(new ValueChange(cell, cmd.operation.value));
             break;
           default: {
             const exhaustive: never = cmd.operation;
@@ -229,22 +479,22 @@ class Puzzle {
         }
       }
       if (cmd.operation.type === 'value') {
-        const ref = parseCellRef(ensureNonNullable(cmd.cellRefs[0]));
-        const digit = cmd.operation.digit;
-        for (let i = 0; i < this.size; i++) {
-          if (i !== ref.c) {
-            changes.push({ cellRef: cellRefA1(ref.r, i), digits: digit, type: 'strike' });
+        const cell = ensureNonNullable(cmd.cells[0]);
+        for (const peer of cell.row.cells) {
+          if (peer !== cell) {
+            changes.push(new CandidatesStrikethrough(peer, [cmd.operation.value]));
           }
-          if (i !== ref.r) {
-            changes.push({ cellRef: cellRefA1(i, ref.c), digits: digit, type: 'strike' });
+        }
+        for (const peer of cell.column.cells) {
+          if (peer !== cell) {
+            changes.push(new CandidatesStrikethrough(peer, [cmd.operation.value]));
           }
         }
       } else if (cmd.operation.type === 'candidates') {
-        for (const cellRef of cmd.cellRefs) {
-          const ref = parseCellRef(cellRef);
-          const conflicting = this.getRowColValues(ref.r, ref.c);
+        for (const cell of cmd.cells) {
+          const conflicting = cell.peerValues;
           if (conflicting.length > 0) {
-            changes.push({ cellRef, digits: conflicting.join(''), type: 'strike' });
+            changes.push(new CandidatesStrikethrough(cell, [...conflicting]));
           }
         }
       }
@@ -252,43 +502,23 @@ class Puzzle {
     return changes;
   }
 
-  private getRowColValues(r: number, c: number): string[] {
-    const result: string[] = [];
-    for (let i = 0; i < this.size; i++) {
-      if (i !== c) {
-        const v = this.values.get(cellRefA1(r, i));
-        if (v) {
-          result.push(v);
-        }
-      }
-      if (i !== r) {
-        const v = this.values.get(cellRefA1(i, c));
-        if (v) {
-          result.push(v);
-        }
-      }
-    }
-    return result;
-  }
-
-  private parseCellPart(cellPart: string): string[] {
+  private parseCellPart(cellPart: string): Cell[] {
     let inner = cellPart;
     if (inner.startsWith('(') && inner.endsWith(')')) {
       inner = inner.substring(1, inner.length - 1);
     }
-    const cellRefs: string[] = [];
+    const cells: Cell[] = [];
     for (const token of inner.trim().split(/\s+/)) {
       if (token.startsWith('@')) {
-        const anchor = parseCellRef(token.substring(1));
-        for (const cell of this.getCageCells(anchor.r, anchor.c)) {
-          cellRefs.push(cell);
+        const anchor = this.getCell(token.substring(1));
+        for (const cell of anchor.cage.cells) {
+          cells.push(cell);
         }
       } else {
-        const cell = parseCellRef(token);
-        cellRefs.push(cellRefA1(cell.r, cell.c));
+        cells.push(this.getCell(token));
       }
     }
-    return cellRefs;
+    return cells;
   }
 
   private parseInput(input: string): EnterCommand[] {
@@ -308,45 +538,26 @@ class Puzzle {
         : match.indexOf(':');
       const cellPart = match.substring(0, colonIdx);
       const opPart = match.substring(colonIdx + 1);
-      const cellRefs = this.parseCellPart(cellPart);
-      const operation = parseOperation(opPart, cellRefs.length);
-      commands.push({ cellRefs, operation });
+      const cells = this.parseCellPart(cellPart);
+      const operation = parseOperation(opPart, cells.length);
+      commands.push({ cells, operation });
     }
     return commands;
   }
+}
 
-  private updateModel(changes: readonly SolveChange[]): void {
-    for (const change of changes) {
-      switch (change.type) {
-        case 'candidates': {
-          const digits = new Set(change.digits.split(''));
-          this.candidates.set(change.cellRef, digits);
-          this.values.delete(change.cellRef);
-          break;
-        }
-        case 'clear':
-          this.values.delete(change.cellRef);
-          this.candidates.delete(change.cellRef);
-          break;
-        case 'strike': {
-          const existing = this.candidates.get(change.cellRef);
-          if (existing) {
-            for (const d of change.digits) {
-              existing.delete(d);
-            }
-          }
-          break;
-        }
-        case 'value':
-          this.values.set(change.cellRef, change.digits);
-          this.candidates.delete(change.cellRef);
-          break;
-        default: {
-          const exhaustive: never = change;
-          throw new Error(`Unknown change type: ${String(exhaustive)}`);
-        }
-      }
-    }
+class ValueChange extends CellChange {
+  public constructor(cell: Cell, public readonly value: number) {
+    super(cell);
+  }
+
+  public applyToModel(): void {
+    this.cell.setValue(this.value);
+    this.cell.clearCandidates();
+  }
+
+  public renderPending(renderer: PuzzleRenderer): void {
+    renderer.renderPendingValue(this);
   }
 }
 
@@ -355,20 +566,13 @@ const CHAR_CODE_A = 65;
 const MIN_NAKED_SET_SIZE = 2;
 
 function buildAutoEliminateChanges(
-  valueSets: readonly ValueSet[],
-  gridSize: number
-): SolveChange[] {
-  const changes: SolveChange[] = [];
-  for (const vs of valueSets) {
-    changes.push({ cellRef: vs.cellRef, digits: vs.digit, type: 'value' });
-    const ref = parseCellRef(vs.cellRef);
-    for (let i = 0; i < gridSize; i++) {
-      if (i !== ref.c) {
-        changes.push({ cellRef: cellRefA1(ref.r, i), digits: vs.digit, type: 'strike' });
-      }
-      if (i !== ref.r) {
-        changes.push({ cellRef: cellRefA1(i, ref.c), digits: vs.digit, type: 'strike' });
-      }
+  cellValueSetters: readonly CellValueSetter[]
+): CellChange[] {
+  const changes: CellChange[] = [];
+  for (const setter of cellValueSetters) {
+    changes.push(new ValueChange(setter.cell, setter.value));
+    for (const peer of setter.cell.peers) {
+      changes.push(new CandidatesStrikethrough(peer, [setter.value]));
     }
   }
   return changes;
@@ -378,17 +582,13 @@ function buildCageConstraintChanges(
   cages: readonly Cage[],
   operations: boolean,
   gridSize: number
-): SolveChange[] {
-  const changes: SolveChange[] = [];
+): CellChange[] {
+  const changes: CellChange[] = [];
   for (const cage of cages) {
     if (cage.cells.length === 1) {
-      const value = cage.value ?? cage.label;
-      if (value !== undefined) {
-        changes.push({
-          cellRef: ensureNonNullable(cage.cells[0]),
-          digits: String(value),
-          type: 'value'
-        });
+      const cellValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
+      if (cellValue !== undefined && !isNaN(cellValue)) {
+        changes.push(new ValueChange(ensureNonNullable(cage.cells[0]), cellValue));
       }
       continue;
     }
@@ -398,16 +598,16 @@ function buildCageConstraintChanges(
       continue;
     }
 
-    let possible: Set<string>;
-    if (operations && cage.op) {
-      possible = computeCagePossibleDigits(cageValue, cage.op, cage.cells.length, gridSize);
+    let possible: Set<number>;
+    if (operations && cage.operator) {
+      possible = computeCagePossibleValues(cageValue, cage.operator, cage.cells.length, gridSize);
     } else if (operations) {
       continue;
     } else {
-      possible = new Set<string>();
+      possible = new Set<number>();
       for (const op of ['+', '-', 'x', '/']) {
-        for (const d of computeCagePossibleDigits(cageValue, op, cage.cells.length, gridSize)) {
-          possible.add(d);
+        for (const v of computeCagePossibleValues(cageValue, op, cage.cells.length, gridSize)) {
+          possible.add(v);
         }
       }
     }
@@ -416,9 +616,9 @@ function buildCageConstraintChanges(
       continue;
     }
 
-    const narrowedDigits = [...possible].sort().join('');
-    for (const cellRef of cage.cells) {
-      changes.push({ cellRef, digits: narrowedDigits, type: 'candidates' });
+    const narrowedValues = [...possible].sort((a, b) => a - b);
+    for (const cell of cage.cells) {
+      changes.push(new CandidatesChange(cell, narrowedValues));
     }
   }
   return changes;
@@ -428,25 +628,25 @@ function cellRefA1(r: number, c: number): string {
   return String.fromCharCode(CHAR_CODE_A + c) + String(r + 1);
 }
 
-function computeCagePossibleDigits(
+function computeCagePossibleValues(
   value: number,
-  op: string,
+  operator: string,
   numCells: number,
   gridSize: number
-): Set<string> {
-  const possible = new Set<string>();
+): Set<number> {
+  const possible = new Set<number>();
 
   function search(tuple: number[], depth: number): void {
     if (depth === numCells) {
-      if (evaluateTuple(tuple, op) === value) {
-        for (const d of tuple) {
-          possible.add(String(d));
+      if (evaluateTuple(tuple, operator) === value) {
+        for (const v of tuple) {
+          possible.add(v);
         }
       }
       return;
     }
-    for (let d = 1; d <= gridSize; d++) {
-      tuple.push(d);
+    for (let v = 1; v <= gridSize; v++) {
+      tuple.push(v);
       search(tuple, depth + 1);
       tuple.pop();
     }
@@ -456,7 +656,7 @@ function computeCagePossibleDigits(
   return possible;
 }
 
-function computeGridBoundaries(cages: readonly Cage[], gridDimension: number): GridBoundaries {
+function computeGridBoundaries(cages: readonly CageRaw[], gridDimension: number): GridBoundaries {
   const cellToCage: Record<string, number> = {};
   for (let cageIndex = 0; cageIndex < cages.length; cageIndex++) {
     const cage = ensureNonNullable(cages[cageIndex]);
@@ -485,7 +685,7 @@ function computeGridBoundaries(cages: readonly Cage[], gridDimension: number): G
   return { horizontalBounds, verticalBounds };
 }
 
-function evaluateTuple(tuple: readonly number[], op: string): null | number {
+function evaluateTuple(tuple: readonly number[], operator: string): null | number {
   if (tuple.length === 0) {
     return null;
   }
@@ -496,7 +696,7 @@ function evaluateTuple(tuple: readonly number[], op: string): null | number {
   const a = ensureNonNullable(tuple[0]);
   const b = ensureNonNullable(tuple[1]);
 
-  switch (op) {
+  switch (operator) {
     case '-': {
       if (tuple.length !== BINARY_OP_SIZE) {
         return null;
@@ -571,8 +771,8 @@ function parseCellRef(token: string): CellRef {
   }
   const groups = ensureNonNullable(m.groups);
   return {
-    c: ensureNonNullable(groups['col']).charCodeAt(0) - CHAR_CODE_A,
-    r: parseInt(ensureNonNullable(groups['row']), 10) - 1
+    columnId: ensureNonNullable(groups['col']).charCodeAt(0) - CHAR_CODE_A + 1,
+    rowId: parseInt(ensureNonNullable(groups['row']), 10)
   };
 }
 
@@ -582,26 +782,28 @@ function parseOperation(text: string, cellCount: number): CellOperation {
   }
 
   if (text.startsWith('=')) {
-    const digit = text.substring(1);
-    if (!/^[1-9]$/.test(digit)) {
+    const valueStr = text.substring(1);
+    if (!/^[1-9]$/.test(valueStr)) {
       throw new Error('=N expects a single digit 1-9');
     }
     if (cellCount > 1) {
       throw new Error('=N can only be used with a single cell');
     }
-    return { digit, type: 'value' };
+    return { type: 'value', value: parseInt(valueStr, 10) };
   }
 
   if (text.startsWith('-')) {
-    const digits = text.substring(1);
-    if (!/^[1-9]+$/.test(digits)) {
+    const valuesStr = text.substring(1);
+    if (!/^[1-9]+$/.test(valuesStr)) {
       throw new Error('-digits expects digits 1-9');
     }
-    return { digits, type: 'strike' };
+    const values = Array.from(valuesStr, (ch) => parseInt(ch, 10));
+    return { type: 'strikethrough', values };
   }
 
   if (!/^[1-9]+$/.test(text)) {
     throw new Error(`Expected digits 1-9: ${text}`);
   }
-  return { digits: text, type: 'candidates' };
+  const values = Array.from(text, (ch) => parseInt(ch, 10));
+  return { type: 'candidates', values };
 }

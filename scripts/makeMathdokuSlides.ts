@@ -51,7 +51,7 @@ const OFF_SCREEN_COORDINATE = -10000;
 interface Cage {
   cells: string[];
   label?: string;
-  op?: string;
+  operator?: string;
   value?: number;
 }
 
@@ -194,7 +194,7 @@ function buildPuzzleJson(spec: YamlSpec, name: string): PuzzleJson {
       cage.value = item.value;
       const op = item.op ?? item.operator;
       if (op !== undefined) {
-        cage.op = op.trim();
+        cage.operator = op.trim();
       }
     } else {
       cage.label = item.label.trim();

@@ -57,34 +57,39 @@ interface ValueProfile {
 }
 
 class SlidesRenderer implements PuzzleRenderer {
-  public renderCommittedChanges(gridSize: number): void {
+  private currentGridSize = 0;
+  private currentSlide: GoogleAppsScript.Slides.Slide | null = null;
+
+  public beginPendingRender(gridSize: number): void {
     makeNextSlide(gridSize);
+    this.currentSlide = getCurrentSlide();
+    this.currentGridSize = gridSize;
   }
 
-  public renderPendingChanges(changes: readonly SolveChange[], gridSize: number): void {
+  public renderCommittedChanges(gridSize: number): void {
     makeNextSlide(gridSize);
-    const slide = getCurrentSlide();
-    for (const change of changes) {
-      switch (change.type) {
-        case 'candidates':
-          applyGreenCandidates(slide, change.cellRef, change.digits, gridSize);
-          break;
-        case 'clear':
-          clearShapeText(slide, `VALUE_${change.cellRef}`);
-          clearShapeText(slide, `CANDIDATES_${change.cellRef}`);
-          break;
-        case 'strike':
-          applyGreenStrikethrough(slide, change.cellRef, change.digits);
-          break;
-        case 'value':
-          applyGreenValue(slide, change.cellRef, change.digits);
-          break;
-        default: {
-          const exhaustive: never = change;
-          throw new Error(`Unknown change type: ${String(exhaustive)}`);
-        }
-      }
-    }
+    this.currentSlide = null;
+  }
+
+  public renderPendingCandidates(change: CandidatesChange): void {
+    const slide = ensureNonNullable(this.currentSlide);
+    applyPendingCandidates(slide, change.cell.ref, change.values, this.currentGridSize);
+  }
+
+  public renderPendingClearance(change: CellClearance): void {
+    const slide = ensureNonNullable(this.currentSlide);
+    clearShapeText(slide, `VALUE_${change.cell.ref}`);
+    clearShapeText(slide, `CANDIDATES_${change.cell.ref}`);
+  }
+
+  public renderPendingStrikethrough(change: CandidatesStrikethrough): void {
+    const slide = ensureNonNullable(this.currentSlide);
+    applyPendingStrikethrough(slide, change.cell.ref, change.values);
+  }
+
+  public renderPendingValue(change: ValueChange): void {
+    const slide = ensureNonNullable(this.currentSlide);
+    applyPendingValue(slide, change.cell.ref, String(change.value));
   }
 }
 
@@ -100,10 +105,10 @@ function addMathdokuMenu(): void {
   menu.addToUi();
 }
 
-function applyGreenCandidates(
+function applyPendingCandidates(
   slide: GoogleAppsScript.Slides.Slide,
   cellRef: string,
-  digits: string,
+  values: readonly number[],
   gridSize: number
 ): void {
   const shape = getShapeByTitle(slide, `CANDIDATES_${cellRef}`);
@@ -111,7 +116,7 @@ function applyGreenCandidates(
     throw new Error(`Candidates shape not found: CANDIDATES_${cellRef}`);
   }
 
-  const formatted = formatCandidates(digits, gridSize);
+  const formatted = formatCandidates(values, gridSize);
   const textRange = shape.getText();
   textRange.setText(formatted);
   textRange.getTextStyle()
@@ -121,22 +126,23 @@ function applyGreenCandidates(
   clearShapeText(slide, `VALUE_${cellRef}`);
 }
 
-function applyGreenStrikethrough(
+function applyPendingStrikethrough(
   slide: GoogleAppsScript.Slides.Slide,
   cellRef: string,
-  digits: string
+  values: readonly number[]
 ): void {
   const shape = getShapeByTitle(slide, `CANDIDATES_${cellRef}`);
   if (!shape) {
     throw new Error(`Candidates shape not found: CANDIDATES_${cellRef}`);
   }
 
+  const valueChars = new Set(values.map(String));
   const textRange = shape.getText();
   const fullText = textRange.asString();
 
   for (let i = 0; i < fullText.length; i++) {
     const ch = fullText.charAt(i);
-    if (digits.includes(ch)) {
+    if (valueChars.has(ch)) {
       textRange.getRange(i, i + 1).getTextStyle()
         .setForegroundColor(GREEN)
         .setStrikethrough(true);
@@ -144,10 +150,10 @@ function applyGreenStrikethrough(
   }
 }
 
-function applyGreenValue(
+function applyPendingValue(
   slide: GoogleAppsScript.Slides.Slide,
   cellRef: string,
-  digit: string
+  valueText: string
 ): void {
   const shape = getShapeByTitle(slide, `VALUE_${cellRef}`);
   if (!shape) {
@@ -155,7 +161,7 @@ function applyGreenValue(
   }
 
   const textRange = shape.getText();
-  textRange.setText(digit);
+  textRange.setText(valueText);
   textRange.getTextStyle()
     .setFontFamily('Segoe UI')
     .setBold(true)
@@ -167,8 +173,8 @@ function applyGreenValue(
 function buildPuzzleFromSlide(): Puzzle {
   const state = getPuzzleState();
   const slide = getCurrentSlide();
-  const values = new Map<string, string>();
-  const candidates = new Map<string, Set<string>>();
+  const values = new Map<string, number>();
+  const candidates = new Map<string, Set<number>>();
 
   for (let r = 0; r < state.size; r++) {
     for (let c = 0; c < state.size; c++) {
@@ -311,7 +317,7 @@ function drawCageLabels(
   gridLeft: number,
   gridTop: number,
   cellWidth: number,
-  cages: readonly Cage[],
+  cages: readonly CageRaw[],
   operations: boolean,
   profile: LayoutProfile
 ): void {
@@ -327,19 +333,19 @@ function drawCageLabels(
   for (let i = 0; i < cages.length; i++) {
     const cage = ensureNonNullable(cages[i]);
     const parsed = cage.cells.map((ref) => ({ ref, ...parseCellRef(ref) }));
-    parsed.sort((a, b) => a.r === b.r ? a.c - b.c : a.r - b.r);
+    parsed.sort((a, b) => a.rowId === b.rowId ? a.columnId - b.columnId : a.rowId - b.rowId);
     const topLeftCell = ensureNonNullable(parsed[0]);
     const topLeftCellRef = topLeftCell.ref;
 
     let label = cage.label ?? '';
     if (!label && cage.value !== undefined) {
-      label = operations && cage.cells.length > 1 && cage.op
-        ? String(cage.value) + opSymbol(cage.op)
+      label = operations && cage.cells.length > 1 && cage.operator
+        ? String(cage.value) + opSymbol(cage.operator)
         : String(cage.value);
     }
 
-    const x = pt(gridLeft + topLeftCell.c * cellWidth + insetX);
-    const y = pt(gridTop + topLeftCell.r * cellWidth + insetY - TEXT_BOX_TOP_PADDING_PT);
+    const x = pt(gridLeft + (topLeftCell.columnId - 1) * cellWidth + insetX);
+    const y = pt(gridTop + (topLeftCell.rowId - 1) * cellWidth + insetY - TEXT_BOX_TOP_PADDING_PT);
     const usableHeight = Math.max(MIN_FONT_SIZE, labelBoxHeight - TEXT_BOX_TOP_PADDING_PT);
     const actualFont = fitFontSize(label, cageProfile.font, labelBoxWidth / POINTS_PER_INCH, usableHeight / POINTS_PER_INCH);
     const box = slide.insertTextBox(label, x, y, pt(labelBoxWidth), pt(labelBoxHeight));
@@ -461,7 +467,7 @@ function finalizeCandidatesShape(shape: GoogleAppsScript.Slides.Shape, gridSize:
 
   let hasGreenStrike = false;
   let hasGreen = false;
-  const survivingDigits: string[] = [];
+  const survivingValues: number[] = [];
 
   for (let i = 0; i < fullText.length; i++) {
     const ch = fullText.charAt(i);
@@ -483,11 +489,11 @@ function finalizeCandidatesShape(shape: GoogleAppsScript.Slides.Shape, gridSize:
       hasGreen = true;
     }
 
-    survivingDigits.push(ch);
+    survivingValues.push(parseInt(ch, 10));
   }
 
   if (hasGreenStrike) {
-    const newFormatted = formatCandidates(survivingDigits.join(''), gridSize);
+    const newFormatted = formatCandidates(survivingValues, gridSize);
     textRange.setText(newFormatted);
     textRange.getTextStyle()
       .setFontFamily(CANDIDATES_FONT)
@@ -544,12 +550,13 @@ function fitFontSize(text: string, basePt: number, boxWidthIn: number, boxHeight
   return Math.max(MIN_FONT_SIZE, Math.min(basePt, widthBased, heightBased));
 }
 
-function formatCandidates(digits: string, gridSize: number): string {
+function formatCandidates(values: readonly number[], gridSize: number): string {
+  const valueSet = new Set(values);
   const firstRowCount = Math.ceil(gridSize / CANDIDATE_ROW_COUNT);
   let line1 = '';
   let line2 = '';
   for (let d = 1; d <= gridSize; d++) {
-    const ch = digits.includes(String(d)) ? String(d) : ' ';
+    const ch = valueSet.has(d) ? String(d) : ' ';
     if (d <= firstRowCount) {
       line1 += ch;
     } else {
@@ -779,14 +786,14 @@ function pt(x: number): number {
 function readCellFromSlide(
   slide: GoogleAppsScript.Slides.Slide,
   ref: string,
-  values: Map<string, string>,
-  candidates: Map<string, Set<string>>
+  values: Map<string, number>,
+  candidates: Map<string, Set<number>>
 ): void {
   const valueShape = getShapeByTitle(slide, `VALUE_${ref}`);
   if (valueShape) {
     const text = valueShape.getText().asString().replace(/\n$/, '').trim();
     if (/^[1-9]$/.test(text)) {
-      values.set(ref, text);
+      values.set(ref, parseInt(text, 10));
     }
   }
 
@@ -801,7 +808,7 @@ function readCellFromSlide(
     return;
   }
 
-  const cands = new Set<string>();
+  const cands = new Set<number>();
   for (let i = 0; i < fullText.length; i++) {
     const ch = fullText.charAt(i);
     if (ch < '1' || ch > '9') {
@@ -809,7 +816,7 @@ function readCellFromSlide(
     }
     const style = textRange.getRange(i, i + 1).getTextStyle();
     if (!style.isStrikethrough()) {
-      cands.add(ch);
+      cands.add(parseInt(ch, 10));
     }
   }
 
