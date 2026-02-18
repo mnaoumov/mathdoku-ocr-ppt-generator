@@ -53,8 +53,8 @@ type HouseType = 'column' | 'row';
 
 interface PuzzleJson {
   readonly cages: readonly CageRaw[];
+  readonly hasOperators?: boolean;
   readonly meta?: string;
-  readonly operations?: boolean;
   readonly size: number;
   readonly title?: string;
 }
@@ -70,7 +70,7 @@ interface PuzzleRenderer {
 
 interface PuzzleState {
   readonly cages: readonly CageRaw[];
-  readonly operations: boolean;
+  readonly hasOperators: boolean;
   readonly size: number;
 }
 
@@ -307,7 +307,7 @@ class Puzzle {
     private readonly renderer: PuzzleRenderer,
     public readonly size: number,
     cagesRaw: readonly CageRaw[],
-    public readonly operations: boolean,
+    public readonly hasOperators: boolean,
     public readonly title: string,
     public readonly meta: string,
     initialValues?: Map<string, number>,
@@ -412,7 +412,7 @@ class Puzzle {
       allCandidateChanges.push(new CandidatesChange(cell, allValues));
     }
     batches.push(allCandidateChanges);
-    const cageChanges = buildCageConstraintChanges(this.cages, this.operations, this.size);
+    const cageChanges = buildCageConstraintChanges(this.cages, this.hasOperators, this.size);
     if (cageChanges.length > 0) {
       batches.push(cageChanges);
     }
@@ -580,7 +580,7 @@ function buildAutoEliminateChanges(
 
 function buildCageConstraintChanges(
   cages: readonly Cage[],
-  operations: boolean,
+  hasOperators: boolean,
   gridSize: number
 ): CellChange[] {
   const changes: CellChange[] = [];
@@ -599,10 +599,8 @@ function buildCageConstraintChanges(
     }
 
     let distinctSets: Set<string>;
-    if (operations && cage.operator) {
+    if (hasOperators && cage.operator) {
       distinctSets = computeCageValueSets(cageValue, cage.operator, cage.cells.length, gridSize);
-    } else if (operations) {
-      continue;
     } else {
       distinctSets = new Set<string>();
       for (const op of ['+', '-', 'x', '/']) {

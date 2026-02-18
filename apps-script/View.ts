@@ -93,12 +93,37 @@ class SlidesRenderer implements PuzzleRenderer {
   }
 }
 
+function addChanges(): void {
+  try {
+    if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
+      SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
+      return;
+    }
+    const html = HtmlService.createHtmlOutputFromFile('EnterDialog')
+      .setWidth(ENTER_DIALOG_WIDTH_PX)
+      .setHeight(ENTER_DIALOG_HEIGHT_PX);
+    SlidesApp.getUi().showModelessDialog(html, 'Edit Cell');
+  } catch (e: unknown) {
+    showError('Add changes', e);
+  }
+}
+
+function addChangesFromInput(input: string): void {
+  const puzzle = buildPuzzleFromSlide();
+  puzzle.enter(input);
+  puzzle.commit();
+}
+
+function addChangesFromStrategies(): number {
+  const puzzle = buildPuzzleFromSlide();
+  return puzzle.applyEasyStrategies();
+}
+
 function addMathdokuMenu(): void {
   const menu = SlidesApp.getUi().createMenu('Mathdoku');
   const initialized = PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') === 'true';
   if (initialized) {
-    menu.addItem('Add pending changes', 'addPendingChanges');
-    menu.addItem('Commit pending changes', 'commitPendingChanges');
+    menu.addItem('Add changes', 'addChanges');
     menu.addItem('Apply easy strategies', 'applyEasyStrategies');
   } else {
     menu.addItem('Init', 'init');
@@ -106,34 +131,15 @@ function addMathdokuMenu(): void {
   menu.addToUi();
 }
 
-function addPendingChanges(): void {
-  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
-    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
-    return;
-  }
-  const html = HtmlService.createHtmlOutputFromFile('EnterDialog')
-    .setWidth(ENTER_DIALOG_WIDTH_PX)
-    .setHeight(ENTER_DIALOG_HEIGHT_PX);
-  SlidesApp.getUi().showModelessDialog(html, 'Edit Cell');
-}
-
-function addPendingChangesFromInput(input: string): void {
-  const puzzle = buildPuzzleFromSlide();
-  puzzle.enter(input);
-}
-
 function applyEasyStrategies(): void {
-  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
-    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
-    return;
+  try {
+    const steps = addChangesFromStrategies();
+    if (steps === 0) {
+      SlidesApp.getUi().alert('No further solving steps found.');
+    }
+  } catch (e: unknown) {
+    showError('Apply easy strategies', e);
   }
-  const puzzle = buildPuzzleFromSlide();
-  const totalSteps = puzzle.applyEasyStrategies();
-  if (totalSteps === 0) {
-    SlidesApp.getUi().alert('No further solving steps found.');
-    return;
-  }
-  SlidesApp.getUi().alert(`Done: ${String(totalSteps)} easy steps applied.`);
 }
 
 function applyPendingCandidates(
@@ -218,7 +224,7 @@ function buildPuzzleFromSlide(): Puzzle {
     new SlidesRenderer(),
     state.size,
     state.cages,
-    state.operations,
+    state.hasOperators,
     '',
     '',
     values,
@@ -233,21 +239,14 @@ function clamp(value: number, lo: number, hi: number): number {
 function clearShapeText(slide: GoogleAppsScript.Slides.Slide, title: string): void {
   const shape = getShapeByTitle(slide, title);
   if (shape) {
-    shape.getText().setText(' ');
+    try {
+      shape.getText().setText(' ');
+    } catch (_e) { /* Shape may not support text */ }
   }
 }
 
 function colorToHex(color: GoogleAppsScript.Slides.Color): string {
   return color.asRgbColor().asHexString().toUpperCase();
-}
-
-function commitPendingChanges(): void {
-  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
-    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
-    return;
-  }
-  const state = getPuzzleState();
-  makeNextSlide(state.size);
 }
 
 function drawAxisLabels(
@@ -358,7 +357,7 @@ function drawCageLabels(
   gridTop: number,
   cellWidth: number,
   cages: readonly CageRaw[],
-  operations: boolean,
+  hasOperators: boolean,
   profile: LayoutProfile
 ): void {
   const cageProfile = profile.cage;
@@ -379,7 +378,7 @@ function drawCageLabels(
 
     let label = cage.label ?? '';
     if (!label && cage.value !== undefined) {
-      label = operations && cage.cells.length > 1 && cage.operator
+      label = hasOperators && cage.cells.length > 1 && cage.operator
         ? String(cage.value) + opSymbol(cage.operator)
         : String(cage.value);
     }
@@ -646,7 +645,7 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   const parsed: PuzzleJson = (typeof puzzleJson === 'string') ? JSON.parse(puzzleJson) as PuzzleJson : puzzleJson;
   const gridDimension = parsed.size;
   const cages = parsed.cages;
-  const operations = parsed.operations !== false;
+  const hasOperators = parsed.hasOperators !== false;
   const title = parsed.title ?? '';
   const meta = parsed.meta ?? '';
 
@@ -655,7 +654,7 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
     throw new Error(`Unsupported size: ${String(gridDimension)}`);
   }
 
-  const state: PuzzleState = { cages, operations, size: gridDimension };
+  const state: PuzzleState = { cages, hasOperators, size: gridDimension };
   const docProps = PropertiesService.getDocumentProperties();
   docProps.setProperty('mathdokuState', JSON.stringify(state));
   docProps.setProperty('mathdokuInitialized', 'true');
@@ -713,7 +712,7 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   drawJoinSquares(slide, gridLeft, gridTop, gridSize, gridDimension, thickPt, verticalBounds, horizontalBounds);
   drawOuterBorder(slide, gridLeft, gridTop, gridSize, thickPt);
   drawAxisLabels(slide, gridLeft, gridTop, cellWidth, gridDimension, profile);
-  drawCageLabels(slide, gridLeft, gridTop, cellWidth, cages, operations, profile);
+  drawCageLabels(slide, gridLeft, gridTop, cellWidth, cages, hasOperators, profile);
 
   // Footer
   const footerLeft = pt(in2pt(TITLE_HORIZONTAL_MARGIN_INCHES));
@@ -733,7 +732,7 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
 
   // Init slides via Puzzle
   const renderer = new SlidesRenderer();
-  const puzzleObj = new Puzzle(renderer, gridDimension, cages, operations, title, meta);
+  const puzzleObj = new Puzzle(renderer, gridDimension, cages, hasOperators, title, meta);
   const initBatches = puzzleObj.buildInitChanges();
   for (const batch of initBatches) {
     puzzleObj.applyChanges(batch);
@@ -750,45 +749,49 @@ function in2pt(inches: number): number {
 }
 
 function init(): void {
-  const props = PropertiesService.getDocumentProperties();
-  if (props.getProperty('mathdokuInitialized') === 'true') {
-    SlidesApp.getUi().alert('Already initialized.');
-    return;
-  }
-  const pres = SlidesApp.getActivePresentation();
-  const slides = pres.getSlides();
-  if (slides.length === 0) {
-    SlidesApp.getUi().alert('No slides found.');
-    return;
-  }
-  const slide = ensureNonNullable(slides[0]);
-  const el = slide.getPageElementById(PUZZLE_INIT_OBJECT_ID);
-  if (el.getPageElementType() !== SlidesApp.PageElementType.SHAPE) {
-    SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
-    return;
-  }
-  const initShape = el.asShape();
-  if (initShape.getShapeType() !== SlidesApp.ShapeType.TEXT_BOX) {
-    SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
-    return;
-  }
-  const text = initShape.getText().asString();
-  let puzzleData: PuzzleJson;
   try {
-    puzzleData = JSON.parse(text) as PuzzleJson;
-  } catch (_e) {
-    SlidesApp.getUi().alert('Invalid puzzle data.');
-    return;
-  }
-  initShape.remove();
-  importPuzzle(puzzleData, pres.getId());
-  props.setProperty('mathdokuInitialized', 'true');
-  addMathdokuMenu();
+    const props = PropertiesService.getDocumentProperties();
+    if (props.getProperty('mathdokuInitialized') === 'true') {
+      SlidesApp.getUi().alert('Already initialized.');
+      return;
+    }
+    const pres = SlidesApp.getActivePresentation();
+    const slides = pres.getSlides();
+    if (slides.length === 0) {
+      SlidesApp.getUi().alert('No slides found.');
+      return;
+    }
+    const slide = ensureNonNullable(slides[0]);
+    const el = slide.getPageElementById(PUZZLE_INIT_OBJECT_ID);
+    if (el.getPageElementType() !== SlidesApp.PageElementType.SHAPE) {
+      SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
+      return;
+    }
+    const initShape = el.asShape();
+    if (initShape.getShapeType() !== SlidesApp.ShapeType.TEXT_BOX) {
+      SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
+      return;
+    }
+    const text = initShape.getText().asString();
+    let puzzleData: PuzzleJson;
+    try {
+      puzzleData = JSON.parse(text) as PuzzleJson;
+    } catch (_e) {
+      SlidesApp.getUi().alert('Invalid puzzle data.');
+      return;
+    }
+    initShape.remove();
+    importPuzzle(puzzleData);
+    props.setProperty('mathdokuInitialized', 'true');
+    addMathdokuMenu();
 
-  const allSlides = pres.getSlides();
-  const lastInitSlide = allSlides[allSlides.length - 1];
-  if (lastInitSlide) {
-    lastInitSlide.selectAsCurrentPage();
+    const allSlides = pres.getSlides();
+    const lastInitSlide = allSlides[allSlides.length - 1];
+    if (lastInitSlide) {
+      lastInitSlide.selectAsCurrentPage();
+    }
+  } catch (e: unknown) {
+    showError('Init', e);
   }
 }
 
@@ -806,11 +809,13 @@ function makeNextSlide(gridSize: number): void {
       continue;
     }
 
-    if (title.startsWith('VALUE_')) {
-      finalizeValueShape(element.asShape());
-    } else if (title.startsWith('CANDIDATES_')) {
-      finalizeCandidatesShape(element.asShape(), gridSize);
-    }
+    try {
+      if (title.startsWith('VALUE_')) {
+        finalizeValueShape(element.asShape());
+      } else if (title.startsWith('CANDIDATES_')) {
+        finalizeCandidatesShape(element.asShape(), gridSize);
+      }
+    } catch (_e) { /* Skip shapes that don't support text */ }
   }
 
   newSlide.selectAsCurrentPage();
@@ -891,7 +896,7 @@ function renderSolveNotesColumns(
   const columnWidth = in2pt(solveProfile.columnWidthInches);
   const columnGap = in2pt(solveProfile.columnGapInches);
   for (let i = 0; i < solveProfile.columnCount; i++) {
-    const noteBox = slide.insertTextBox('', pt(notesLeft + i * (columnWidth + columnGap)), pt(gridTop), pt(columnWidth), pt(gridSize));
+    const noteBox = slide.insertTextBox(' ', pt(notesLeft + i * (columnWidth + columnGap)), pt(gridTop), pt(columnWidth), pt(gridSize));
     noteBox.setTitle(`SOLVE_NOTES_COL${String(i + 1)}`);
     noteBox.getText().getTextStyle()
       .setFontFamily('Segoe UI').setFontSize(solveProfile.font).setBold(false).setForegroundColor(VALUE_GRAY);
@@ -984,12 +989,14 @@ function scaleSlideElements(slide: GoogleAppsScript.Slides.Slide, scale: number)
     const type = element.getPageElementType();
     if (type === SlidesApp.PageElementType.SHAPE) {
       const shape = element.asShape();
-      for (const run of shape.getText().getRuns()) {
-        const fontSize = run.getTextStyle().getFontSize();
-        if (fontSize) {
-          run.getTextStyle().setFontSize(Math.max(MIN_FONT_SIZE, Math.round(fontSize * scale)));
+      try {
+        for (const run of shape.getText().getRuns()) {
+          const fontSize = run.getTextStyle().getFontSize();
+          if (fontSize) {
+            run.getTextStyle().setFontSize(Math.max(MIN_FONT_SIZE, Math.round(fontSize * scale)));
+          }
         }
-      }
+      } catch (_e) { /* GetText throws on shapes without text (e.g. grid rectangles) */ }
       try {
         const borderWeight = shape.getBorder().getWeight();
         if (borderWeight > 0) {
@@ -1002,6 +1009,13 @@ function scaleSlideElements(slide: GoogleAppsScript.Slides.Slide, scale: number)
       line.setWeight(Math.max(1, lineWeight * scale));
     }
   }
+}
+
+function showError(source: string, e: unknown): void {
+  const message = e instanceof Error ? e.message : String(e);
+  const stack = e instanceof Error ? (e.stack ?? '') : '';
+  Logger.log(`${source}: ${message}\n${stack}`);
+  SlidesApp.getUi().alert(`${source}: ${message}`);
 }
 
 const AXIS_LABEL_MAGENTA = '#C800C8';

@@ -1,6 +1,6 @@
 size: 8
 difficulty: 5
-operations: true
+hasOperators: true
 cages:
   - cells: [A1, B1, A2]
     value: 16

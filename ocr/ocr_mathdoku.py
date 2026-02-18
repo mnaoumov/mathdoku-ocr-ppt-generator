@@ -935,7 +935,7 @@ def _read_cage_labels(
                 break
 
     # Post-processing pass 2: enforce operators for multi-cell cages.
-    # Only applies when the puzzle SHOWS operations (most cages already have one).
+    # Only applies when the puzzle SHOWS operators (most cages already have one).
     multi_with_op = sum(1 for (_, op), c in zip(results, cages) if len(c) > 1 and op)
     multi_without_op = sum(1 for (_, op), c in zip(results, cages) if len(c) > 1 and not op)
     ops_shown = multi_with_op > multi_without_op
@@ -1059,7 +1059,7 @@ def ocr_mathdoku(
 
     result: dict = {"size": n}
     result["difficulty"] = "?"
-    result["operations"] = has_ops
+    result["hasOperators"] = has_ops
     result["cages"] = cages_data
 
     return result

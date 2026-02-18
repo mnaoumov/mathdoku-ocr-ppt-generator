@@ -33,7 +33,7 @@ On first run, the script opens a browser to authorize. The token is cached in `t
 uv run ocr_mathdoku.py screenshot.png
 ```
 
-Outputs `screenshot.yaml` with puzzle structure (grid size, cages, operations).
+Outputs `screenshot.yaml` with puzzle structure (grid size, cages, whether operators are shown).
 
 ### 2. Generate a Google Slides presentation
 
@@ -72,7 +72,7 @@ This creates a step-by-step solving history where each slide is one logical step
 ```yaml
 size: 5
 difficulty: 3
-operations: true
+hasOperators: true
 cages:
 - cells: [A1, B1, B2]
   value: 7
@@ -84,7 +84,7 @@ cages:
 
 - `size`: Grid dimension (4-9)
 - `difficulty`: Difficulty rating (set by user after OCR)
-- `operations`: Whether operation symbols are shown on cages
+- `hasOperators`: Whether operation symbols are shown on cages
 - `cages`: List of cages, each with cell references, target value, and operation (`+`, `-`, `x`, `/`)
 
 Cell references use column letter + row number (e.g., `A1` = column A, row 1).

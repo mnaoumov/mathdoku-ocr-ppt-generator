@@ -65,8 +65,8 @@ interface CredentialsFile {
 
 interface PuzzleJson {
   cages: Cage[];
+  hasOperators?: boolean;
   meta?: string;
-  operations?: boolean;
   size: number;
   title?: string;
 }
@@ -96,8 +96,8 @@ interface YamlCage {
 interface YamlSpec {
   cages?: unknown;
   difficulty?: string;
+  hasOperators?: boolean;
   meta?: string;
-  operations?: boolean;
   size?: number;
   title?: string;
 }
@@ -155,7 +155,7 @@ async function bindAppsScript(auth: OAuth2Client, presId: string): Promise<strin
 function buildPuzzleJson(spec: YamlSpec, name: string): PuzzleJson {
   const n = spec.size ?? DEFAULT_GRID_SIZE;
   const difficulty = spec.difficulty;
-  const operations = spec.operations ?? true;
+  const hasOperators = spec.hasOperators ?? true;
 
   let title = (spec.title ?? '').trim();
   if (!title) {
@@ -168,7 +168,7 @@ function buildPuzzleJson(spec: YamlSpec, name: string): PuzzleJson {
     if (difficulty !== undefined) {
       parts.push(`Difficulty ${difficulty}`);
     }
-    parts.push(operations ? 'With operators' : 'Without operators');
+    parts.push(hasOperators ? 'With operators' : 'Without operators');
     meta = parts.join(' \u2022 ');
   }
 
@@ -203,7 +203,7 @@ function buildPuzzleJson(spec: YamlSpec, name: string): PuzzleJson {
     cages.push(cage);
   }
 
-  return { cages, meta, operations, size: n, title };
+  return { cages, hasOperators, meta, size: n, title };
 }
 
 async function buildSlides(specPath: string): Promise<string> {
