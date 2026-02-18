@@ -598,25 +598,29 @@ function buildCageConstraintChanges(
       continue;
     }
 
-    let possible: Set<number>;
+    let distinctSets: Set<string>;
     if (operations && cage.operator) {
-      possible = computeCagePossibleValues(cageValue, cage.operator, cage.cells.length, gridSize);
+      distinctSets = computeCageValueSets(cageValue, cage.operator, cage.cells.length, gridSize);
     } else if (operations) {
       continue;
     } else {
-      possible = new Set<number>();
+      distinctSets = new Set<string>();
       for (const op of ['+', '-', 'x', '/']) {
-        for (const v of computeCagePossibleValues(cageValue, op, cage.cells.length, gridSize)) {
-          possible.add(v);
+        for (const s of computeCageValueSets(cageValue, op, cage.cells.length, gridSize)) {
+          distinctSets.add(s);
         }
       }
     }
 
-    if (possible.size >= gridSize || possible.size === 0) {
+    if (distinctSets.size !== 1) {
       continue;
     }
 
-    const narrowedValues = [...possible].sort((a, b) => a - b);
+    const narrowedValues = ensureNonNullable([...distinctSets][0]).split(',').map(Number);
+    if (narrowedValues.length >= gridSize) {
+      continue;
+    }
+
     for (const cell of cage.cells) {
       changes.push(new CandidatesChange(cell, narrowedValues));
     }
@@ -628,20 +632,19 @@ function cellRefA1(r: number, c: number): string {
   return String.fromCharCode(CHAR_CODE_A + c) + String(r + 1);
 }
 
-function computeCagePossibleValues(
+function computeCageValueSets(
   value: number,
   operator: string,
   numCells: number,
   gridSize: number
-): Set<number> {
-  const possible = new Set<number>();
+): Set<string> {
+  const distinctSets = new Set<string>();
 
   function search(tuple: number[], depth: number): void {
     if (depth === numCells) {
       if (evaluateTuple(tuple, operator) === value) {
-        for (const v of tuple) {
-          possible.add(v);
-        }
+        const valueSet = [...new Set(tuple)].sort((a, b) => a - b).join(',');
+        distinctSets.add(valueSet);
       }
       return;
     }
@@ -653,7 +656,7 @@ function computeCagePossibleValues(
   }
 
   search([], 0);
-  return possible;
+  return distinctSets;
 }
 
 function computeGridBoundaries(cages: readonly CageRaw[], gridDimension: number): GridBoundaries {
