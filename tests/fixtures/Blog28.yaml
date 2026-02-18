@@ -3,7 +3,7 @@ difficulty: 1
 operations: false
 cages:
 - cells: [A1, A2]
-  value: 1
+  value: 10
 - cells: [B1, B2]
   value: 5
 - cells: [C1, C2]
