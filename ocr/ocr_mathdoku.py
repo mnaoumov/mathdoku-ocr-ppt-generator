@@ -428,10 +428,16 @@ def _trim_to_text(crop_gray: np.ndarray) -> np.ndarray:
             top = r + 1
         else:
             break
-    if left > 0 or top > 0:
-        _dbg(f"  Stripped border: left={left}px top={top}px")
-        crop_gray = crop_gray[top:, left:]
-        binary = binary[top:, left:]
+    right = w
+    for c in range(w - 1, max(w - max_strip - 1, -1), -1):
+        if np.mean(binary[:, c] > 0) > 0.90:
+            right = c
+        else:
+            break
+    if left > 0 or top > 0 or right < w:
+        _dbg(f"  Stripped border: left={left}px top={top}px right={w - right}px")
+        crop_gray = crop_gray[top:, left:right]
+        binary = binary[top:, left:right]
         h, w = crop_gray.shape
         if h < 5 or w < 5:
             return crop_gray
@@ -762,6 +768,112 @@ def _detect_trailing_operator(crop_gray: np.ndarray) -> str | None:
     return None
 
 
+# ── mathematical validation ──────────────────────────────────────────────
+
+def _can_factor(value: int, k: int, max_digit: int) -> bool:
+    """Check if value can be expressed as product of exactly k digits in [1, max_digit]."""
+    if k == 1:
+        return 1 <= value <= max_digit
+    if value > max_digit ** k:
+        return False
+    for d in range(max_digit, 0, -1):
+        if value % d == 0 and _can_factor(value // d, k - 1, max_digit):
+            return True
+    return False
+
+
+def _is_valid_cage_value(
+    value_str: str, op: str | None, n_cells: int, grid_size: int,
+) -> bool:
+    """Check if a cage value is mathematically possible for the given operation."""
+    try:
+        value = int(value_str)
+    except ValueError:
+        return True  # Can't validate non-integer values
+    if value <= 0:
+        return False
+
+    if op == "+":
+        # 2-cell cages always share a row/col → different digits → min sum = 1+2 = 3
+        min_sum = 3 if n_cells == 2 else n_cells
+        max_sum = n_cells * grid_size
+        return min_sum <= value <= max_sum
+    elif op == "-":
+        # Subtraction only for 2-cell cages; |a-b| with a≠b → [1, grid_size-1]
+        return 1 <= value <= grid_size - 1
+    elif op == "x":
+        return _can_factor(value, n_cells, grid_size)
+    elif op == "/":
+        # Division only for 2-cell cages; a/b with a≠b → [2, grid_size]
+        # (quotient 1 would require a=b, impossible for adjacent cells)
+        return 2 <= value <= grid_size
+
+    return True  # Unknown or no op → can't validate
+
+
+# Common Tesseract digit confusions: misread digit → possible correct digits
+_DIGIT_CONFUSIONS: dict[str, list[str]] = {
+    "1": ["7", "4"],
+    "4": ["1"],
+    "7": ["1"],
+    "6": ["8"],
+    "8": ["6", "3"],
+    "3": ["8"],
+    "0": ["9"],
+    "9": ["0"],
+}
+
+_OP_CONFUSIONS: dict[str, list[str]] = {
+    "+": ["-"],
+    "-": ["+"],
+}
+
+
+def _try_correct_cage_value(
+    value_str: str, op: str | None, n_cells: int, grid_size: int,
+) -> tuple[str, str | None] | None:
+    """Try to find a valid correction for an invalid cage value.
+
+    Returns (corrected_value, corrected_op) or None if no correction found.
+    Strategies are ordered by likelihood: first-digit substitution (most common
+    OCR error for cage labels), then dropping extra digits, then operator swap.
+    """
+    # Strategy 1: Substitute first digit (common leading-digit misread)
+    if value_str and value_str[0] in _DIGIT_CONFUSIONS:
+        for replacement in _DIGIT_CONFUSIONS[value_str[0]]:
+            candidate = replacement + value_str[1:]
+            if _is_valid_cage_value(candidate, op, n_cells, grid_size):
+                return (candidate, op)
+
+    # Strategy 2: Drop leading digit (border artifact added extra digit)
+    if len(value_str) >= 2:
+        shorter = value_str[1:]
+        if _is_valid_cage_value(shorter, op, n_cells, grid_size):
+            return (shorter, op)
+
+    # Strategy 3: Swap operator (+/- confusion)
+    if op and op in _OP_CONFUSIONS:
+        for new_op in _OP_CONFUSIONS[op]:
+            if _is_valid_cage_value(value_str, new_op, n_cells, grid_size):
+                return (value_str, new_op)
+
+    # Strategy 4: Drop trailing digit (operator misread as digit)
+    if len(value_str) >= 2:
+        shorter = value_str[:-1]
+        if _is_valid_cage_value(shorter, op, n_cells, grid_size):
+            return (shorter, op)
+
+    # Strategy 5: Substitute other digits
+    for i in range(1, len(value_str)):
+        if value_str[i] in _DIGIT_CONFUSIONS:
+            for replacement in _DIGIT_CONFUSIONS[value_str[i]]:
+                candidate = value_str[:i] + replacement + value_str[i + 1:]
+                if _is_valid_cage_value(candidate, op, n_cells, grid_size):
+                    return (candidate, op)
+
+    return None
+
+
 def _read_cage_labels(
     gray: np.ndarray,
     gx: int, gy: int,
@@ -936,10 +1048,10 @@ def _read_cage_labels(
 
     # Post-processing pass 2: enforce operators for multi-cell cages.
     # Only applies when the puzzle SHOWS operators (most cages already have one).
-    multi_with_op = sum(1 for (_, op), c in zip(results, cages) if len(c) > 1 and op)
-    multi_without_op = sum(1 for (_, op), c in zip(results, cages) if len(c) > 1 and not op)
-    ops_shown = multi_with_op > multi_without_op
-    if not ops_shown:
+    multi_cell_cages_with_operator = sum(1 for (_, op), c in zip(results, cages) if len(c) > 1 and op)
+    multi_cell_cages_without_operator = sum(1 for (_, op), c in zip(results, cages) if len(c) > 1 and not op)
+    has_operators = multi_cell_cages_with_operator > multi_cell_cages_without_operator
+    if not has_operators:
         return results
 
     for idx in range(len(results)):
@@ -1004,6 +1116,65 @@ def _read_cage_labels(
                 _dbg(f"    -> {value}{detected_op} (component-based op detection)")
                 results[idx] = (value, detected_op)
 
+    # Post-processing pass 3: mathematical validation.
+    # Flag cage values that are mathematically impossible for the given
+    # operation and cage size.  First try re-reading the label from the
+    # original (non-upscaled) image at high resolution — this recovers
+    # digits lost to low-resolution OCR (e.g. "68x" → "288x" at 6×).
+    # Fall back to heuristic corrections (digit substitutions, operator
+    # swaps, extra-digit removal) only if the retry doesn't help.
+    for idx in range(len(results)):
+        value, op = results[idx]
+        if not value or value == "?":
+            continue
+        n_cells = len(cages[idx])
+        if _is_valid_cage_value(value, op, n_cells, n):
+            continue
+
+        # Strategy A: re-read from original gray at high resolution.
+        tl_r, tl_c = cages[idx][0]
+        cx_r, cy_r = v_pos[tl_c], h_pos[tl_r]
+        cw_r = v_pos[tl_c + 1] - cx_r
+        ch_r = h_pos[tl_r + 1] - cy_r
+        ocr_fixed = False
+        for retry_scale in (4, 6, 8):
+            for retry_margin in (2, 3, 4):
+                rx = gx + cx_r + retry_margin
+                ry = gy + cy_r + retry_margin
+                rw = int(cw_r * 0.95)
+                rh = int(ch_r * 0.45)
+                crop_raw = gray[ry:ry + rh, rx:rx + rw]
+                if crop_raw.size == 0 or crop_raw.shape[0] < 5:
+                    continue
+                crop_hi = cv2.resize(crop_raw, None, fx=retry_scale,
+                                     fy=retry_scale,
+                                     interpolation=cv2.INTER_CUBIC)
+                raw_hi = _ocr_crop(crop_hi)
+                m_hi = _LABEL_RE.match(raw_hi)
+                if not m_hi:
+                    continue
+                new_val = m_hi.group(1)
+                new_op = m_hi.group(2) or op
+                if _is_valid_cage_value(new_val, new_op, n_cells, n):
+                    _dbg(f"  Cage {idx}: hi-res retry {value}{op or ''}"
+                         f" -> {new_val}{new_op or ''}"
+                         f" (scale={retry_scale} margin={retry_margin})")
+                    results[idx] = (new_val, new_op)
+                    ocr_fixed = True
+                    break
+            if ocr_fixed:
+                break
+
+        if ocr_fixed:
+            continue
+
+        # Strategy B: heuristic correction (digit subs, op swaps, etc.)
+        corrected = _try_correct_cage_value(value, op, n_cells, n)
+        if corrected:
+            _dbg(f"  Cage {idx}: validation fix {value}{op or ''}"
+                 f" -> {corrected[0]}{corrected[1] or ''}")
+            results[idx] = corrected
+
     return results
 
 
@@ -1045,7 +1216,7 @@ def ocr_mathdoku(
     labels = _read_cage_labels(gray, gx, gy, n, h_pos, v_pos, cages)
 
     # 7. Build result
-    has_ops = False
+    has_operators = False
     cages_data: list[dict] = []
     for cells, (value, op) in zip(cages, labels):
         refs = _FlowList(_cell_a1(r, c) for r, c in cells)
@@ -1053,13 +1224,13 @@ def ocr_mathdoku(
         entry["value"] = int(value) if value.isdigit() else value
         if op:
             entry["op"] = op
-            has_ops = True
+            has_operators = True
         cages_data.append(entry)
         print(f"  {refs}: {value}{op or ''}")
 
     result: dict = {"size": n}
     result["difficulty"] = "?"
-    result["hasOperators"] = has_ops
+    result["hasOperators"] = has_operators
     result["cages"] = cages_data
 
     return result
