@@ -585,6 +585,7 @@ function buildCageConstraintChanges(
 ): CellChange[] {
   const valueSetters: CellValueSetter[] = [];
   const candidateChanges: CellChange[] = [];
+  const narrowedCells = new Set<Cell>();
   for (const cage of cages) {
     if (cage.cells.length === 1) {
       const cellValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
@@ -622,9 +623,17 @@ function buildCageConstraintChanges(
 
     for (const cell of cage.cells) {
       candidateChanges.push(new CandidatesChange(cell, narrowedValues));
+      narrowedCells.add(cell);
     }
   }
-  return [...buildAutoEliminateChanges(valueSetters), ...candidateChanges];
+
+  const valuedCells = new Set(valueSetters.map((s) => s.cell));
+  const autoChanges = buildAutoEliminateChanges(valueSetters);
+  const filteredChanges = autoChanges.filter(
+    (change) => !(change instanceof CandidatesStrikethrough
+      && (narrowedCells.has(change.cell) || valuedCells.has(change.cell)))
+  );
+  return [...filteredChanges, ...candidateChanges];
 }
 
 function cellRefA1(r: number, c: number): string {

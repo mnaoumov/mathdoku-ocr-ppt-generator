@@ -158,7 +158,8 @@ function applyPendingCandidates(
   textRange.setText(formatted);
   textRange.getTextStyle()
     .setFontFamily(CANDIDATES_FONT)
-    .setForegroundColor(GREEN);
+    .setForegroundColor(GREEN)
+    .setStrikethrough(false);
 
   clearShapeText(slide, `VALUE_${cellRef}`);
 }
