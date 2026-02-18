@@ -583,12 +583,13 @@ function buildCageConstraintChanges(
   hasOperators: boolean,
   gridSize: number
 ): CellChange[] {
-  const changes: CellChange[] = [];
+  const valueSetters: CellValueSetter[] = [];
+  const candidateChanges: CellChange[] = [];
   for (const cage of cages) {
     if (cage.cells.length === 1) {
       const cellValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
       if (cellValue !== undefined && !isNaN(cellValue)) {
-        changes.push(new ValueChange(ensureNonNullable(cage.cells[0]), cellValue));
+        valueSetters.push({ cell: ensureNonNullable(cage.cells[0]), value: cellValue });
       }
       continue;
     }
@@ -620,10 +621,10 @@ function buildCageConstraintChanges(
     }
 
     for (const cell of cage.cells) {
-      changes.push(new CandidatesChange(cell, narrowedValues));
+      candidateChanges.push(new CandidatesChange(cell, narrowedValues));
     }
   }
-  return changes;
+  return [...buildAutoEliminateChanges(valueSetters), ...candidateChanges];
 }
 
 function cellRefA1(r: number, c: number): string {
