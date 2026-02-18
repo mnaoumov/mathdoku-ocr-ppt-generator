@@ -96,13 +96,44 @@ class SlidesRenderer implements PuzzleRenderer {
 function addMathdokuMenu(): void {
   const menu = SlidesApp.getUi().createMenu('Mathdoku');
   const initialized = PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') === 'true';
-  if (!initialized) {
-    menu.addItem('Init', 'runInit');
+  if (initialized) {
+    menu.addItem('Add pending changes', 'addPendingChanges');
+    menu.addItem('Commit pending changes', 'commitPendingChanges');
+    menu.addItem('Apply easy strategies', 'applyEasyStrategies');
+  } else {
+    menu.addItem('Init', 'init');
   }
-  menu.addItem('Enter', 'showEnterDialog');
-  menu.addItem('MakeNextSlide', 'handleCommit');
-  menu.addItem('Apply Easy Strategies', 'handleApplyEasyStrategies');
   menu.addToUi();
+}
+
+function addPendingChanges(): void {
+  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
+    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
+    return;
+  }
+  const html = HtmlService.createHtmlOutputFromFile('EnterDialog')
+    .setWidth(ENTER_DIALOG_WIDTH_PX)
+    .setHeight(ENTER_DIALOG_HEIGHT_PX);
+  SlidesApp.getUi().showModelessDialog(html, 'Edit Cell');
+}
+
+function addPendingChangesFromInput(input: string): void {
+  const puzzle = buildPuzzleFromSlide();
+  puzzle.enter(input);
+}
+
+function applyEasyStrategies(): void {
+  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
+    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
+    return;
+  }
+  const puzzle = buildPuzzleFromSlide();
+  const totalSteps = puzzle.applyEasyStrategies();
+  if (totalSteps === 0) {
+    SlidesApp.getUi().alert('No further solving steps found.');
+    return;
+  }
+  SlidesApp.getUi().alert(`Done: ${String(totalSteps)} easy steps applied.`);
 }
 
 function applyPendingCandidates(
@@ -208,6 +239,15 @@ function clearShapeText(slide: GoogleAppsScript.Slides.Slide, title: string): vo
 
 function colorToHex(color: GoogleAppsScript.Slides.Color): string {
   return color.asRgbColor().asHexString().toUpperCase();
+}
+
+function commitPendingChanges(): void {
+  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
+    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
+    return;
+  }
+  const state = getPuzzleState();
+  makeNextSlide(state.size);
 }
 
 function drawAxisLabels(
@@ -602,34 +642,6 @@ function getShapeByTitle(slide: GoogleAppsScript.Slides.Slide, title: string): G
   return null;
 }
 
-function handleApplyEasyStrategies(): void {
-  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
-    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
-    return;
-  }
-  const puzzle = buildPuzzleFromSlide();
-  const totalSteps = puzzle.applyEasyStrategies();
-  if (totalSteps === 0) {
-    SlidesApp.getUi().alert('No further solving steps found.');
-    return;
-  }
-  SlidesApp.getUi().alert(`Done: ${String(totalSteps)} easy steps applied.`);
-}
-
-function handleCommit(): void {
-  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
-    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
-    return;
-  }
-  const state = getPuzzleState();
-  makeNextSlide(state.size);
-}
-
-function handleEnter(input: string): void {
-  const puzzle = buildPuzzleFromSlide();
-  puzzle.enter(input);
-}
-
 function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   const parsed: PuzzleJson = (typeof puzzleJson === 'string') ? JSON.parse(puzzleJson) as PuzzleJson : puzzleJson;
   const gridDimension = parsed.size;
@@ -735,6 +747,49 @@ function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
 
 function in2pt(inches: number): number {
   return inches * POINTS_PER_INCH;
+}
+
+function init(): void {
+  const props = PropertiesService.getDocumentProperties();
+  if (props.getProperty('mathdokuInitialized') === 'true') {
+    SlidesApp.getUi().alert('Already initialized.');
+    return;
+  }
+  const pres = SlidesApp.getActivePresentation();
+  const slides = pres.getSlides();
+  if (slides.length === 0) {
+    SlidesApp.getUi().alert('No slides found.');
+    return;
+  }
+  const slide = ensureNonNullable(slides[0]);
+  const el = slide.getPageElementById(PUZZLE_INIT_OBJECT_ID);
+  if (el.getPageElementType() !== SlidesApp.PageElementType.SHAPE) {
+    SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
+    return;
+  }
+  const initShape = el.asShape();
+  if (initShape.getShapeType() !== SlidesApp.ShapeType.TEXT_BOX) {
+    SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
+    return;
+  }
+  const text = initShape.getText().asString();
+  let puzzleData: PuzzleJson;
+  try {
+    puzzleData = JSON.parse(text) as PuzzleJson;
+  } catch (_e) {
+    SlidesApp.getUi().alert('Invalid puzzle data.');
+    return;
+  }
+  initShape.remove();
+  importPuzzle(puzzleData, pres.getId());
+  props.setProperty('mathdokuInitialized', 'true');
+  addMathdokuMenu();
+
+  const allSlides = pres.getSlides();
+  const lastInitSlide = allSlides[allSlides.length - 1];
+  if (lastInitSlide) {
+    lastInitSlide.selectAsCurrentPage();
+  }
 }
 
 function isColorEqual(color: GoogleAppsScript.Slides.Color, hex: string): boolean {
@@ -893,49 +948,6 @@ function renderValueAndCandidateBoxes(
   }
 }
 
-function runInit(): void {
-  const props = PropertiesService.getDocumentProperties();
-  if (props.getProperty('mathdokuInitialized') === 'true') {
-    SlidesApp.getUi().alert('Already initialized.');
-    return;
-  }
-  const pres = SlidesApp.getActivePresentation();
-  const slides = pres.getSlides();
-  if (slides.length === 0) {
-    SlidesApp.getUi().alert('No slides found.');
-    return;
-  }
-  const slide = ensureNonNullable(slides[0]);
-  const el = slide.getPageElementById(PUZZLE_INIT_OBJECT_ID);
-  if (el.getPageElementType() !== SlidesApp.PageElementType.SHAPE) {
-    SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
-    return;
-  }
-  const initShape = el.asShape();
-  if (initShape.getShapeType() !== SlidesApp.ShapeType.TEXT_BOX) {
-    SlidesApp.getUi().alert('No puzzle data found. Run the generator again.');
-    return;
-  }
-  const text = initShape.getText().asString();
-  let puzzleData: PuzzleJson;
-  try {
-    puzzleData = JSON.parse(text) as PuzzleJson;
-  } catch (_e) {
-    SlidesApp.getUi().alert('Invalid puzzle data.');
-    return;
-  }
-  initShape.remove();
-  importPuzzle(puzzleData, pres.getId());
-  props.setProperty('mathdokuInitialized', 'true');
-  addMathdokuMenu();
-
-  const allSlides = pres.getSlides();
-  const lastInitSlide = allSlides[allSlides.length - 1];
-  if (lastInitSlide) {
-    lastInitSlide.selectAsCurrentPage();
-  }
-}
-
 function scaleIfNeeded(
   pres: GoogleAppsScript.Slides.Presentation,
   slide: GoogleAppsScript.Slides.Slide,
@@ -990,17 +1002,6 @@ function scaleSlideElements(slide: GoogleAppsScript.Slides.Slide, scale: number)
       line.setWeight(Math.max(1, lineWeight * scale));
     }
   }
-}
-
-function showEnterDialog(): void {
-  if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
-    SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
-    return;
-  }
-  const html = HtmlService.createHtmlOutputFromFile('EnterDialog')
-    .setWidth(ENTER_DIALOG_WIDTH_PX)
-    .setHeight(ENTER_DIALOG_HEIGHT_PX);
-  SlidesApp.getUi().showModelessDialog(html, 'Edit Cell');
 }
 
 const AXIS_LABEL_MAGENTA = '#C800C8';
