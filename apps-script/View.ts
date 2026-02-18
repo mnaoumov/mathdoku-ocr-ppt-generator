@@ -891,7 +891,7 @@ function renderSolveNotesColumns(
   const columnWidth = in2pt(solveProfile.columnWidthInches);
   const columnGap = in2pt(solveProfile.columnGapInches);
   for (let i = 0; i < solveProfile.columnCount; i++) {
-    const noteBox = slide.insertTextBox(' ', pt(notesLeft + i * (columnWidth + columnGap)), pt(gridTop), pt(columnWidth), pt(gridSize));
+    const noteBox = slide.insertTextBox('', pt(notesLeft + i * (columnWidth + columnGap)), pt(gridTop), pt(columnWidth), pt(gridSize));
     noteBox.setTitle(`SOLVE_NOTES_COL${String(i + 1)}`);
     noteBox.getText().getTextStyle()
       .setFontFamily('Segoe UI').setFontSize(solveProfile.font).setBold(false).setForegroundColor(VALUE_GRAY);
@@ -1035,7 +1035,7 @@ const LAYOUT_PROFILES: Record<number, LayoutProfile> = {
     gridSizeInches: 4.75,
     gridTopInches: 1.35,
     metaFontSize: 20,
-    solve: { columnCount: 2, columnGapInches: 0.25, columnWidthInches: 3.25, font: 16, leftInches: 6.20 },
+    solve: { columnCount: 1, columnGapInches: 0.25, columnWidthInches: 3.25, font: 16, leftInches: 6.20 },
     thickPt: 5.0,
     thinPt: 1.0,
     titleFontSize: 30,
@@ -1054,7 +1054,7 @@ const LAYOUT_PROFILES: Record<number, LayoutProfile> = {
     gridSizeInches: 5.20,
     gridTopInches: 1.25,
     metaFontSize: 18,
-    solve: { columnCount: 2, columnGapInches: 0.25, columnWidthInches: 3.10, font: 16, leftInches: 6.55 },
+    solve: { columnCount: 1, columnGapInches: 0.25, columnWidthInches: 3.10, font: 16, leftInches: 6.55 },
     thickPt: 5.0,
     thinPt: 1.0,
     titleFontSize: 26,
@@ -1073,7 +1073,7 @@ const LAYOUT_PROFILES: Record<number, LayoutProfile> = {
     gridSizeInches: 5.70,
     gridTopInches: 1.15,
     metaFontSize: 16,
-    solve: { columnCount: 2, columnGapInches: 0.25, columnWidthInches: 2.95, font: 16, leftInches: 6.85 },
+    solve: { columnCount: 1, columnGapInches: 0.25, columnWidthInches: 2.95, font: 16, leftInches: 6.85 },
     thickPt: 6.5,
     thinPt: 1.0,
     titleFontSize: 24,
@@ -1092,7 +1092,7 @@ const LAYOUT_PROFILES: Record<number, LayoutProfile> = {
     gridSizeInches: 6.05,
     gridTopInches: 1.10,
     metaFontSize: 14,
-    solve: { columnCount: 2, columnGapInches: 0.25, columnWidthInches: 2.85, font: 16, leftInches: 7.05 },
+    solve: { columnCount: 1, columnGapInches: 0.25, columnWidthInches: 2.85, font: 16, leftInches: 7.05 },
     thickPt: 6.5,
     thinPt: 1.0,
     titleFontSize: 22,
@@ -1111,7 +1111,7 @@ const LAYOUT_PROFILES: Record<number, LayoutProfile> = {
     gridSizeInches: 6.20,
     gridTopInches: 1.10,
     metaFontSize: 14,
-    solve: { columnCount: 2, columnGapInches: 0.25, columnWidthInches: 2.80, font: 16, leftInches: 7.15 },
+    solve: { columnCount: 1, columnGapInches: 0.25, columnWidthInches: 2.80, font: 16, leftInches: 7.15 },
     thickPt: 6.5,
     thinPt: 1.0,
     titleFontSize: 22,
@@ -1130,7 +1130,7 @@ const LAYOUT_PROFILES: Record<number, LayoutProfile> = {
     gridSizeInches: 6.30,
     gridTopInches: 1.10,
     metaFontSize: 14,
-    solve: { columnCount: 2, columnGapInches: 0.25, columnWidthInches: 2.75, font: 16, leftInches: 7.25 },
+    solve: { columnCount: 1, columnGapInches: 0.25, columnWidthInches: 2.75, font: 16, leftInches: 7.25 },
     thickPt: 6.5,
     thinPt: 1.0,
     titleFontSize: 22,
