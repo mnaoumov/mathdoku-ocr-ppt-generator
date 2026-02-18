@@ -13,6 +13,8 @@
  *     3. Run the script — it will open a browser to authorize on first run
  */
 
+/* eslint-disable no-console -- CLI script output. */
+
 import { type GaxiosError } from 'gaxios';
 import { type OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
@@ -34,7 +36,17 @@ import {
 } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// ── Types ────────────────────────────────────────────────────────────────────
+/* eslint-disable no-magic-numbers -- Enum values are literal status codes. */
+enum HttpStatusCodes {
+  Forbidden = 403,
+  NoContent = 204,
+  OK = 200
+}
+/* eslint-enable no-magic-numbers -- End enum block. */
+
+const FIRST_CLI_ARG_INDEX = 2;
+const JSON_INDENT = 2;
+const OFF_SCREEN_COORDINATE = -10000;
 
 interface Cage {
   cells: string[];
@@ -90,14 +102,13 @@ interface YamlSpec {
   title?: string;
 }
 
-// ── Constants ────────────────────────────────────────────────────────────────
-
 const API_NAMES: Record<string, string> = {
   'drive.googleapis.com': 'Google Drive API',
   'script.googleapis.com': 'Apps Script API',
   'slides.googleapis.com': 'Google Slides API'
 };
 
+const DEFAULT_GRID_SIZE = 4;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CREDENTIALS_FILE = join(ROOT, 'credentials.json');
 const TEMPLATE_PPTX = join(ROOT, 'assets', 'template-960x540.pptx');
@@ -108,8 +119,6 @@ const SCOPES = [
   'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/script.projects'
 ];
-
-// ── Auth ─────────────────────────────────────────────────────────────────────
 
 async function bindAppsScript(auth: OAuth2Client, presId: string): Promise<string> {
   const scriptSvc = google.script({ auth, version: 'v1' });
@@ -144,7 +153,7 @@ async function bindAppsScript(auth: OAuth2Client, presId: string): Promise<strin
 }
 
 function buildPuzzleJson(spec: YamlSpec, name: string): PuzzleJson {
-  const n = spec.size ?? 4;
+  const n = spec.size ?? DEFAULT_GRID_SIZE;
   const difficulty = spec.difficulty;
   const operations = spec.operations ?? true;
 
@@ -286,8 +295,6 @@ async function getCredentials(): Promise<OAuth2Client> {
   return interactiveAuth(clientId, clientSecret);
 }
 
-// ── Puzzle JSON builder ──────────────────────────────────────────────────────
-
 function handleHttpError(e: GaxiosError): never {
   const status = e.response?.status ?? 0;
   const errors = (e.response?.data as { error?: { details?: Record<string, unknown>[] } } | undefined)?.error?.details;
@@ -308,11 +315,11 @@ function handleHttpError(e: GaxiosError): never {
     process.exit(1);
   }
 
-  if (reason === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' || status === 403) {
+  if (reason === 'ACCESS_TOKEN_SCOPE_INSUFFICIENT' || status === (HttpStatusCodes.Forbidden as number)) {
     console.error(
       `Error: permission denied: ${e.message}\n`
         + '\n'
-        + `Full error details: ${JSON.stringify(e.response?.data, null, 2)}\n`
+        + `Full error details: ${JSON.stringify(e.response?.data, null, JSON_INDENT)}\n`
         + '\n'
         + `Delete ${TOKEN_FILE} and re-run to re-authenticate.`
     );
@@ -346,7 +353,7 @@ async function interactiveAuth(clientId: string, clientSecret: string): Promise<
       const error = url.searchParams.get('error');
 
       if (error) {
-        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.writeHead(HttpStatusCodes.OK, { 'Content-Type': 'text/html' });
         res.end('<h1>Authorization failed</h1><p>You can close this tab.</p>');
         server.close();
         fail(new Error(`Authorization denied: ${error}`));
@@ -354,12 +361,12 @@ async function interactiveAuth(clientId: string, clientSecret: string): Promise<
       }
 
       if (!authCode) {
-        res.writeHead(204);
+        res.writeHead(HttpStatusCodes.NoContent);
         res.end();
         return;
       }
 
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(HttpStatusCodes.OK, { 'Content-Type': 'text/html' });
       res.end('<h1>Authorization successful!</h1><p>You can close this tab.</p>');
       server.close();
       done(authCode);
@@ -371,8 +378,6 @@ async function interactiveAuth(clientId: string, clientSecret: string): Promise<
   saveToken(oauth2Client);
   return oauth2Client;
 }
-
-// ── Apps Script binding ──────────────────────────────────────────────────────
 
 function loadClientCredentials(): { clientId: string; clientSecret: string; redirectUri: string } {
   if (!existsSync(CREDENTIALS_FILE)) {
@@ -400,10 +405,8 @@ function loadClientCredentials(): { clientId: string; clientSecret: string; redi
   };
 }
 
-// ── Main ─────────────────────────────────────────────────────────────────────
-
 async function main(): Promise<void> {
-  const specPath = process.argv[2];
+  const specPath = process.argv[FIRST_CLI_ARG_INDEX];
   if (specPath === undefined) {
     console.error('Usage: npm run makeMathdokuSlides <puzzle.yaml>');
     process.exit(1);
@@ -414,8 +417,6 @@ async function main(): Promise<void> {
   }
   await buildSlides(specPath);
 }
-
-// ── Error handling ───────────────────────────────────────────────────────────
 
 function openBrowser(url: string): void {
   let cmd: string;
@@ -428,8 +429,6 @@ function openBrowser(url: string): void {
   }
   exec(cmd);
 }
-
-// ── Embed puzzle for Init ─────────────────────────────────────────────────────
 
 const PUZZLE_INIT_OBJECT_ID = 'PuzzleInitData';
 
@@ -459,8 +458,8 @@ async function embedPuzzleData(
               transform: {
                 scaleX: 1,
                 scaleY: 1,
-                translateX: -10000,
-                translateY: -10000,
+                translateX: OFF_SCREEN_COORDINATE,
+                translateY: OFF_SCREEN_COORDINATE,
                 unit: 'PT'
               }
             },
@@ -491,7 +490,9 @@ function saveToken(client: OAuth2Client): void {
     token_type: creds.token_type ?? undefined
   };
   /* eslint-enable camelcase -- end Google API block */
-  writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, 2), 'utf-8');
+  writeFileSync(TOKEN_FILE, JSON.stringify(tokenData, null, JSON_INDENT), 'utf-8');
 }
 
 await main();
+
+/* eslint-enable no-console -- End CLI script output. */

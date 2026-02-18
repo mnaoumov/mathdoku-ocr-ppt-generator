@@ -38,6 +38,8 @@
     "testpaths",
     "Consolas",
     "unitless",
-    "issuetracker"
+    "issuetracker",
+    "modeless",
+    "multicell"
   ]
 }

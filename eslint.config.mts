@@ -1,8 +1,6 @@
 // ESLint configuration -- based on obsidian-dev-utils strict config,
 // Adapted for Google Apps Script (no modules, global scope).
-// Omitted from obsidian-dev-utils: import-x, modules-newlines, obsidianmd (not applicable).
-
-/* eslint-disable no-magic-numbers -- Config files use magic numbers for rule settings. */
+// Omitted from obsidian-dev-utils: import-x, modules-newlines, obsidian plugin (not applicable).
 
 import commentsConfigs from '@eslint-community/eslint-plugin-eslint-comments/configs';
 import eslint from '@eslint/js';
@@ -14,18 +12,18 @@ import {
 } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
+/* eslint-disable no-magic-numbers -- ESLint config values. */
+
 export default defineConfig(
   globalIgnores([
     '**/*.js',
     '**/node_modules/'
   ]),
-  // ── Base configs ──
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
   commentsConfigs.recommended,
   perfectionist.configs['recommended-alphabetical'],
-  // ── Stylistic ──
   stylistic.configs.recommended,
   stylistic.configs.customize({
     arrowParens: true,
@@ -33,7 +31,6 @@ export default defineConfig(
     commaDangle: 'never',
     semi: true
   }),
-  // ── Project rules ──
   {
     languageOptions: {
       parserOptions: {
@@ -45,9 +42,7 @@ export default defineConfig(
       '@stylistic': stylistic
     },
     rules: {
-      // ── Comments ──
       '@eslint-community/eslint-comments/require-description': 'error',
-      // ── Stylistic overrides ──
       '@stylistic/indent': 'off',
       '@stylistic/indent-binary-ops': 'off',
       '@stylistic/jsx-one-expression-per-line': 'off',
@@ -75,7 +70,6 @@ export default defineConfig(
         'single',
         { allowTemplateLiterals: 'never' }
       ],
-      // ── TypeScript-ESLint ──
       '@typescript-eslint/explicit-function-return-type': 'error',
       '@typescript-eslint/explicit-member-accessibility': 'error',
       '@typescript-eslint/no-invalid-void-type': ['error', {
@@ -93,7 +87,6 @@ export default defineConfig(
         { ignorePrimitives: { boolean: true } }
       ],
       '@typescript-eslint/prefer-readonly': 'error',
-      // ── Core ESLint ──
       'accessor-pairs': 'error',
       'array-callback-return': 'error',
       'camelcase': 'error',
@@ -208,4 +201,5 @@ export default defineConfig(
     }
   }
 );
-/* eslint-enable no-magic-numbers -- end config file block. */
+
+/* eslint-enable no-magic-numbers -- ESLint config values. */

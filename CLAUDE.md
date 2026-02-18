@@ -23,9 +23,11 @@ Generate Google Slides presentations for Mathdoku puzzles that can be solved int
 
 - `scripts/makeMathdokuSlides.ts` - Slides generator: upload PPTX template, bind script, embed puzzle JSON
 - `assets/template-960x540.pptx` - Blank PPTX with 960×540 pt page size (workaround for API bug)
-- `apps-script/Code.ts` - onOpen (menu), helpers, importPuzzle (grid generation with layout profiles for sizes 4-9)
-- `apps-script/Enter.ts` - Enter command: apply value/candidate changes to cells
-- `apps-script/MakeNextSlide.ts` - Duplicate slide and finalize green changes
+- `apps-script/Puzzle.ts` - Business logic: Puzzle class, PuzzleRenderer/Strategy interfaces, types, utility functions (zero Google Slides dependencies)
+- `apps-script/View.ts` - Google Slides layer: SlidesRenderer class, layout profiles, grid rendering, importPuzzle, global entry points
+- `apps-script/SingleCandidateStrategy.ts` - Strategy: cells with exactly 1 candidate → set value
+- `apps-script/HiddenSingleStrategy.ts` - Strategy: digit in only 1 cell per row/col → set value
+- `apps-script/NakedSetStrategy.ts` - Strategy: naked set of size k → eliminate candidates
 - `apps-script/EnterDialog.html` - Modal dialog UI for Enter command
 - `apps-script/appsscript.json` - Apps Script manifest
 - `ocr/ocr_mathdoku.py` - OCR: uses OpenCV + Tesseract to extract puzzle from screenshot
@@ -41,12 +43,19 @@ Shape titles (set via `shape.setTitle()`):
 
 Puzzle state stored in DocumentProperties as JSON.
 
-### Solving Workflow
+### Solving Workflow (MVC)
 
-1. **Enter**: Custom menu opens modal with cells + operations. Changes shown in green.
+The Apps Script code follows an MVC pattern:
+- **Puzzle** (model+logic in `Puzzle.ts`): maintains cell values/candidates, parses Enter commands, runs strategies
+- **SlidesRenderer** (view in `View.ts`): implements `PuzzleRenderer` interface, handles all Google Slides rendering
+- **Strategies** (one file each): implement `Strategy` interface, called by Puzzle's strategy loop
+
+Flow:
+1. **Enter**: Opens modal dialog. User input parsed by `Puzzle.buildEnterChanges()`. Changes rendered in green via `renderPendingChanges` (duplicates slide first, then applies green).
    - `=N` sets value, `digits` adds candidates, `-digits` strikethroughs candidates
    - `@A1` expands to all cells in the cage containing A1
-2. **MakeNextSlide**: Duplicates current slide, finalizes green changes on the clone (green->normal, strikethrough->removed).
+2. **Commit**: Calls `renderCommittedChanges` which duplicates slide and finalizes green changes (green→normal, strikethrough→removed).
+3. **Apply Easy Strategies**: Runs strategy loop (single candidate → hidden single → naked set k=2,3,...) until no more progress.
 
 ## Apps Script TypeScript
 
@@ -71,8 +80,8 @@ Apps Script source is in `apps-script/` as TypeScript (`.ts`). The build pushes 
 - Generate slides: `npm run makeMathdokuSlides tests/fixtures/Blog15.yaml`
 - Run OCR: `npm run ocrMathdoku screenshot.png`
 - YAML fixtures go in `tests/fixtures/`
-- Grid sizes 4-9 supported, each with a hardcoded layout profile in `LAYOUT_PROFILES` (in Code.ts)
-- Color constants must match between `Code.ts` and other `.ts` files
+- Grid sizes 4-9 supported, each with a hardcoded layout profile in `LAYOUT_PROFILES` (in View.ts)
+- Color constants defined in `View.ts`
 - Font: "Segoe UI" for title, labels, values, notes; "Consolas" for candidates (per layout spec)
 
 ## Testing
@@ -91,7 +100,7 @@ Apps Script source is in `apps-script/` as TypeScript (`.ts`). The build pushes 
 
 ## Slide layout spec (pixel-perfect reference)
 
-The following is the canonical layout specification. `apps-script/Code.ts` must implement it exactly so that Google Slides output matches the reference (former PowerPoint generator) one-to-one. All layout values come from the profiles below; convert inches to points with **1 in = 72 pt** and **round every position and size to integer pt** before passing to the Slides API.
+The following is the canonical layout specification. `apps-script/View.ts` must implement it exactly so that Google Slides output matches the reference (former PowerPoint generator) one-to-one. All layout values come from the profiles below; convert inches to points with **1 in = 72 pt** and **round every position and size to integer pt** before passing to the Slides API.
 
 ### Visual reference
 
