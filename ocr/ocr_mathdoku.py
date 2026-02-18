@@ -181,15 +181,21 @@ def _detect_line_positions(
     # faint/dotted lines or image artifacts can cause them to be missed.
     # Missing edge peaks throw off spacing calculations for grid-size
     # scoring and line fitting.
-    edge_gap = max(gh, gw) * 0.08
-    if h_peaks and h_peaks[-1] < gh - 1 - edge_gap:
-        h_peaks.append(gh - 1)
-    if v_peaks and v_peaks[-1] < gw - 1 - edge_gap:
-        v_peaks.append(gw - 1)
-    if h_peaks and h_peaks[0] > edge_gap:
-        h_peaks.insert(0, 0)
-    if v_peaks and v_peaks[0] > edge_gap:
-        v_peaks.insert(0, 0)
+    # Use adaptive threshold: only add edge if gap exceeds half the
+    # average peak spacing (suggesting a full missing row/column).
+    def _maybe_add_edges(peaks: list[int], total: int) -> list[int]:
+        if len(peaks) < 2:
+            return peaks
+        avg_sp = (peaks[-1] - peaks[0]) / (len(peaks) - 1)
+        thresh = avg_sp * 0.5
+        if peaks[0] > thresh:
+            peaks.insert(0, 0)
+        if total - 1 - peaks[-1] > thresh:
+            peaks.append(total - 1)
+        return peaks
+
+    h_peaks = _maybe_add_edges(h_peaks, gh)
+    v_peaks = _maybe_add_edges(v_peaks, gw)
 
     return h_peaks, v_peaks
 
@@ -551,6 +557,26 @@ def _run_tesseract(padded: np.ndarray, configs: list[str]) -> str:
     best_length = max(by_len, key=lambda l: (_len_votes(l), l))
     best_digits = max(by_len[best_length], key=lambda d: digit_counts[d])
 
+    # Prefer a longer candidate when the shorter is a suffix of it (leading
+    # digits cut off).  Only upgrade when the vote gap is small (≤ 2) and
+    # the longer candidate has ≥ 2 votes, to avoid noise.
+    best_votes = _len_votes(best_length)
+    for longer_len in sorted(by_len):
+        if longer_len <= best_length:
+            continue
+        longer_votes = _len_votes(longer_len)
+        if best_votes - longer_votes > 2:
+            continue
+        for d in sorted(by_len[longer_len], key=lambda x: digit_counts[x],
+                        reverse=True):
+            if d.endswith(best_digits) and digit_counts[d] >= 2:
+                _dbg(f"  Suffix upgrade: {best_digits} -> {d}"
+                     f" ({digit_counts[d]} vs {digit_counts[best_digits]})")
+                best_digits = d
+                best_length = longer_len
+                break
+        break  # only check the next longer group
+
     # Include operator if any result with this digit string has one
     # Exclude '?' from voting - it's a fallback marker, not a real operator
     real_ops = [op for d, op in results if d == best_digits and op and op != "?"]
@@ -563,6 +589,15 @@ def _run_tesseract(padded: np.ndarray, configs: list[str]) -> str:
     fallback_ops = [op for d, op in results if d == best_digits and op == "?"]
     if len(fallback_ops) > no_op_count:
         return best_digits + "?"
+    # Check if a longer candidate captured the operator as a trailing digit
+    # (e.g., "134" = "13" + "4" where Tesseract misread "+" as "4")
+    _OP_DIGIT = {"4": "+", "0": "+"}
+    for longer_len in sorted(by_len):
+        if longer_len != len(best_digits) + 1:
+            continue
+        for d in by_len[longer_len]:
+            if d[:-1] == best_digits and d[-1] in _OP_DIGIT and digit_counts[d] >= 2:
+                return best_digits + _OP_DIGIT[d[-1]]
     return best_digits
 
 
@@ -790,9 +825,21 @@ def _read_cage_labels(
 
         raw = _ocr_crop(crop)
 
-        # If first attempt failed or didn't match, retry with wider margins
-        # to avoid border artifacts bleeding into the crop
-        if not _LABEL_RE.match(raw):
+        # If first attempt failed, didn't match, or produced a suspicious
+        # value, retry with wider margins to avoid border artifacts bleeding
+        # into the crop.  Suspicious values:
+        #  - all-zero digits (no Mathdoku cage has value 0)
+        #  - single digit for a multi-cell cage (a digit may be cut off by
+        #    the thick cage border)
+        m_raw = _LABEL_RE.match(raw)
+        raw_digits = m_raw.group(1) if m_raw else ""
+        is_zero_val = m_raw is not None and raw_digits.lstrip("0") == ""
+        is_short_for_cage = m_raw is not None and (
+            (len(raw_digits) == 1 and len(cells) > 1)  # 1-digit for 2+ cells
+            or (len(raw_digits) == 2 and len(cells) > 2)  # 2-digit for 3+ cells
+        )
+        needs_retry = not m_raw or is_zero_val or is_short_for_cage
+        if needs_retry:
             for margin2 in (margin * 2, margin * 3, margin * 4):
                 if grid_up is not None:
                     lx2 = int(cx * s) + margin2
@@ -805,7 +852,19 @@ def _read_cage_labels(
                 if crop2.size == 0 or crop2.shape[0] < 5 or crop2.shape[1] < 5:
                     continue
                 raw2 = _ocr_crop(crop2)
-                if _LABEL_RE.match(raw2):
+                m2 = _LABEL_RE.match(raw2)
+                if not m2:
+                    continue
+                new_digits = m2.group(1)
+                # Accept if better: non-zero when was zero, or longer reading
+                improved = False
+                if not m_raw:
+                    improved = True
+                elif is_zero_val and new_digits.lstrip("0") != "":
+                    improved = True
+                elif is_short_for_cage and len(new_digits) > len(raw_digits):
+                    improved = True
+                if improved:
                     _dbg(f"  Retry with margin={margin2} improved: {raw!r} -> {raw2!r}")
                     raw = raw2
                     break
@@ -823,13 +882,24 @@ def _read_cage_labels(
 
     # Post-processing pass 1: retry short-value labels at higher upscale
     # from original gray to recover leading digits lost to border artifacts.
-    # For small-cell grids (pre-upscaled), retry 1-2 digit values.
-    # For normal grids, only retry 1-digit values (2-digit retries can
-    # produce worse results when the initial read was already good).
-    max_retry_len = 2 if grid_up is not None else 1
+    # For small-cell grids (pre-upscaled), retry 2-digit values.
+    # For all grids, retry 1-digit values in multi-cell cages (a single
+    # digit like "8" is suspicious for a cage with 3+ cells and operation).
     for idx in range(len(results)):
         value, op = results[idx]
-        if not value or value == "?" or len(value) > max_retry_len:
+        if not value or value == "?":
+            continue
+        is_short_multicell = (
+            len(value) == 1 and (
+                (op is not None and len(cages[idx]) > 1)  # has operator: any multi-cell
+                or len(cages[idx]) > 2  # no operator: 3+ cells (1 digit is implausible)
+            )
+        ) or (
+            len(value) == 2 and op is not None and len(cages[idx]) > 2
+            # 2-digit with operator for 3+ cells: may have lost leading digit
+        )
+        is_small_cell_retry = grid_up is not None and len(value) == 2
+        if not is_short_multicell and not is_small_cell_retry:
             continue
         tl_r, tl_c = cages[idx][0]
         cx_r, cy_r = v_pos[tl_c], h_pos[tl_r]
@@ -849,6 +919,11 @@ def _read_cage_labels(
             raw_hi = _ocr_crop(crop_hi)
             m_hi = _LABEL_RE.match(raw_hi)
             if m_hi and len(m_hi.group(1)) > len(value):
+                # Require original value as suffix in the longer result
+                # (prevents "7" → "10" but allows "8" → "108",
+                #  prevents "26" → "31" but allows "26" → "126")
+                if not m_hi.group(1).endswith(value):
+                    continue
                 # Accept if same operator or new operator is compatible
                 hi_op = m_hi.group(2)
                 if op is not None and hi_op is not None and hi_op != op:

@@ -20,7 +20,12 @@ dev = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --durations=0"
 
 [tool.hatch.scripts]
 test = "pytest {args}"
+
+[dependency-groups]
+dev = [
+    "pytest-sugar>=1.1.1",
+]
