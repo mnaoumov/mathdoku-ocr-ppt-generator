@@ -13,5 +13,9 @@
     "skipLibCheck": true,
     "target": "ES2020"
   },
-  "include": ["eslint.config.mts", "scripts/**/*.ts"]
+  "include": [
+    "@types/**/*.d.ts",
+    "eslint.config.mts",
+    "scripts/**/*.ts"
+  ]
 }

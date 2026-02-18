@@ -1,17 +1,24 @@
 // ESLint configuration -- based on obsidian-dev-utils strict config,
-// adapted for Google Apps Script (no modules, global scope).
+// Adapted for Google Apps Script (no modules, global scope).
+// Omitted from obsidian-dev-utils: import-x, modules-newlines, obsidianmd (not applicable).
+
+/* eslint-disable no-magic-numbers -- Config files use magic numbers for rule settings. */
 
 import commentsConfigs from '@eslint-community/eslint-plugin-eslint-comments/configs';
 import eslint from '@eslint/js';
 import stylistic from '@stylistic/eslint-plugin';
 import perfectionist from 'eslint-plugin-perfectionist';
-import { defineConfig } from 'eslint/config';
+import {
+  defineConfig,
+  globalIgnores
+} from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
 export default defineConfig(
-  {
-    ignores: ['**/*.js', '**/node_modules/']
-  },
+  globalIgnores([
+    '**/*.js',
+    '**/node_modules/'
+  ]),
   // ── Base configs ──
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
@@ -19,6 +26,7 @@ export default defineConfig(
   commentsConfigs.recommended,
   perfectionist.configs['recommended-alphabetical'],
   // ── Stylistic ──
+  stylistic.configs.recommended,
   stylistic.configs.customize({
     arrowParens: true,
     braceStyle: '1tbs',
@@ -39,10 +47,24 @@ export default defineConfig(
     rules: {
       // ── Comments ──
       '@eslint-community/eslint-comments/require-description': 'error',
-      // ── Stylistic overrides (from obsidian-dev-utils getStylisticConfigs) ──
+      // ── Stylistic overrides ──
       '@stylistic/indent': 'off',
       '@stylistic/indent-binary-ops': 'off',
+      '@stylistic/jsx-one-expression-per-line': 'off',
       '@stylistic/no-extra-semi': 'error',
+      '@stylistic/object-curly-newline': [
+        'error',
+        {
+          ExportDeclaration: {
+            minProperties: 2,
+            multiline: true
+          },
+          ImportDeclaration: {
+            minProperties: 2,
+            multiline: true
+          }
+        }
+      ],
       '@stylistic/operator-linebreak': [
         'error',
         'before',
@@ -53,9 +75,16 @@ export default defineConfig(
         'single',
         { allowTemplateLiterals: 'never' }
       ],
-      // ── TypeScript-ESLint (from obsidian-dev-utils getTseslintConfigs) ──
+      // ── TypeScript-ESLint ──
       '@typescript-eslint/explicit-function-return-type': 'error',
+      '@typescript-eslint/explicit-member-accessibility': 'error',
+      '@typescript-eslint/no-invalid-void-type': ['error', {
+        allowAsThisParameter: true
+      }],
       '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/no-this-alias': ['error', {
+        allowedNames: ['that']
+      }],
       // Disabled: TypeScript handles via noUnusedLocals/noUnusedParameters.
       // ESLint can't see cross-file usage in Apps Script's global scope (module: "None").
       '@typescript-eslint/no-unused-vars': 'off',
@@ -64,10 +93,11 @@ export default defineConfig(
         { ignorePrimitives: { boolean: true } }
       ],
       '@typescript-eslint/prefer-readonly': 'error',
-      // ── Core ESLint (from obsidian-dev-utils getEslintConfigs) ──
+      // ── Core ESLint ──
       'accessor-pairs': 'error',
       'array-callback-return': 'error',
       'camelcase': 'error',
+      'capitalized-comments': ['error', 'always', { block: { ignorePattern: 'v8' } }],
       'complexity': 'error',
       'consistent-this': 'error',
       'curly': 'error',
@@ -77,11 +107,18 @@ export default defineConfig(
       'eqeqeq': 'error',
       'func-name-matching': 'error',
       'func-names': 'error',
+      'func-style': [
+        'error',
+        'declaration',
+        { allowArrowFunctions: false }
+      ],
       'grouped-accessor-pairs': ['error', 'getBeforeSet'],
       'guard-for-in': 'error',
+      'no-alert': 'error',
       'no-array-constructor': 'error',
       'no-bitwise': 'error',
       'no-caller': 'error',
+      'no-console': ['error', { allow: ['warn', 'error'] }],
       'no-constructor-return': 'error',
       'no-div-regex': 'error',
       'no-else-return': ['error', { allowElseIf: false }],
@@ -98,6 +135,14 @@ export default defineConfig(
       'no-lone-blocks': 'error',
       'no-lonely-if': 'error',
       'no-loop-func': 'error',
+      'no-magic-numbers': [
+        'error',
+        {
+          detectObjects: true,
+          enforceConst: true,
+          ignore: [-1, 0, 1]
+        }
+      ],
       'no-multi-assign': 'error',
       'no-multi-str': 'error',
       'no-negated-condition': 'error',
@@ -163,3 +208,4 @@ export default defineConfig(
     }
   }
 );
+/* eslint-enable no-magic-numbers -- end config file block. */
