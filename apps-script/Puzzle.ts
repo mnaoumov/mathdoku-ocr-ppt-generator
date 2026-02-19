@@ -565,6 +565,50 @@ const BINARY_OP_SIZE = 2;
 const CHAR_CODE_A = 65;
 const MIN_NAKED_SET_SIZE = 2;
 
+function applyCageConstraint(
+  cage: Cage,
+  hasOperators: boolean,
+  gridSize: number,
+  valueSetters: CellValueSetter[],
+  candidateChanges: CellChange[],
+  narrowedCells: Set<Cell>
+): void {
+  const cageValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
+  if (cageValue === undefined || isNaN(cageValue)) {
+    return;
+  }
+
+  const tuples = collectCageTuples(cageValue, cage, hasOperators, gridSize);
+  if (tuples.length === 0) {
+    return;
+  }
+
+  if (tuples.length === 1) {
+    const tuple = ensureNonNullable(tuples[0]);
+    for (let i = 0; i < cage.cells.length; i++) {
+      valueSetters.push({ cell: ensureNonNullable(cage.cells[i]), value: ensureNonNullable(tuple[i]) });
+    }
+    return;
+  }
+
+  const distinctSets = new Set<string>(tuples.map(
+    (t) => [...new Set(t)].sort((a, b) => a - b).join(',')
+  ));
+  if (distinctSets.size !== 1) {
+    return;
+  }
+
+  const narrowedValues = ensureNonNullable([...distinctSets][0]).split(',').map(Number);
+  if (narrowedValues.length >= gridSize) {
+    return;
+  }
+
+  for (const cell of cage.cells) {
+    candidateChanges.push(new CandidatesChange(cell, narrowedValues));
+    narrowedCells.add(cell);
+  }
+}
+
 function buildAutoEliminateChanges(
   cellValueSetters: readonly CellValueSetter[]
 ): CellChange[] {
@@ -595,36 +639,7 @@ function buildCageConstraintChanges(
       continue;
     }
 
-    const cageValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
-    if (cageValue === undefined || isNaN(cageValue)) {
-      continue;
-    }
-
-    let distinctSets: Set<string>;
-    if (hasOperators && cage.operator) {
-      distinctSets = computeCageValueSets(cageValue, cage.operator, cage.cells.length, gridSize);
-    } else {
-      distinctSets = new Set<string>();
-      for (const op of ['+', '-', 'x', '/']) {
-        for (const s of computeCageValueSets(cageValue, op, cage.cells.length, gridSize)) {
-          distinctSets.add(s);
-        }
-      }
-    }
-
-    if (distinctSets.size !== 1) {
-      continue;
-    }
-
-    const narrowedValues = ensureNonNullable([...distinctSets][0]).split(',').map(Number);
-    if (narrowedValues.length >= gridSize) {
-      continue;
-    }
-
-    for (const cell of cage.cells) {
-      candidateChanges.push(new CandidatesChange(cell, narrowedValues));
-      narrowedCells.add(cell);
-    }
+    applyCageConstraint(cage, hasOperators, gridSize, valueSetters, candidateChanges, narrowedCells);
   }
 
   const valuedCells = new Set(valueSetters.map((s) => s.cell));
@@ -640,31 +655,27 @@ function cellRefA1(r: number, c: number): string {
   return String.fromCharCode(CHAR_CODE_A + c) + String(r + 1);
 }
 
-function computeCageValueSets(
-  value: number,
-  operator: string,
-  numCells: number,
+function collectCageTuples(
+  cageValue: number,
+  cage: Cage,
+  hasOperators: boolean,
   gridSize: number
-): Set<string> {
-  const distinctSets = new Set<string>();
-
-  function search(tuple: number[], depth: number): void {
-    if (depth === numCells) {
-      if (evaluateTuple(tuple, operator) === value) {
-        const valueSet = [...new Set(tuple)].sort((a, b) => a - b).join(',');
-        distinctSets.add(valueSet);
+): number[][] {
+  if (hasOperators && cage.operator) {
+    return computeValidCageTuples(cageValue, cage.operator, cage.cells, gridSize);
+  }
+  const tupleSet = new Set<string>();
+  const tuples: number[][] = [];
+  for (const op of ['+', '-', 'x', '/']) {
+    for (const t of computeValidCageTuples(cageValue, op, cage.cells, gridSize)) {
+      const key = t.join(',');
+      if (!tupleSet.has(key)) {
+        tupleSet.add(key);
+        tuples.push(t);
       }
-      return;
-    }
-    for (let v = 1; v <= gridSize; v++) {
-      tuple.push(v);
-      search(tuple, depth + 1);
-      tuple.pop();
     }
   }
-
-  search([], 0);
-  return distinctSets;
+  return tuples;
 }
 
 function computeGridBoundaries(cages: readonly CageRaw[], gridDimension: number): GridBoundaries {
@@ -694,6 +705,47 @@ function computeGridBoundaries(cages: readonly CageRaw[], gridDimension: number)
   }
 
   return { horizontalBounds, verticalBounds };
+}
+
+function computeValidCageTuples(
+  value: number,
+  operator: string,
+  cells: readonly Cell[],
+  gridSize: number
+): number[][] {
+  const tuples: number[][] = [];
+  const numCells = cells.length;
+
+  function search(tuple: number[], depth: number): void {
+    if (depth === numCells) {
+      if (evaluateTuple(tuple, operator) === value) {
+        tuples.push([...tuple]);
+      }
+      return;
+    }
+    const cell = ensureNonNullable(cells[depth]);
+    for (let v = 1; v <= gridSize; v++) {
+      let valid = true;
+      for (let i = 0; i < depth; i++) {
+        if (ensureNonNullable(tuple[i]) === v) {
+          const prevCell = ensureNonNullable(cells[i]);
+          if (prevCell.row === cell.row || prevCell.column === cell.column) {
+            valid = false;
+            break;
+          }
+        }
+      }
+      if (!valid) {
+        continue;
+      }
+      tuple.push(v);
+      search(tuple, depth + 1);
+      tuple.pop();
+    }
+  }
+
+  search([], 0);
+  return tuples;
 }
 
 function evaluateTuple(tuple: readonly number[], operator: string): null | number {
