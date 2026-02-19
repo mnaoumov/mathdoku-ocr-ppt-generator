@@ -1,57 +1,33 @@
-/**
- * Puzzle.ts -- Business logic layer (zero GoogleAppsScript references).
- *
- * Contains: Cell, House, Cage domain classes, CellChange hierarchy,
- * Puzzle class (model + strategy loop + Enter parsing),
- * PuzzleRenderer / Strategy interfaces, shared types, pure utilities.
- */
+import type { CellChange } from './cellChanges/CellChange.ts';
+import type { CellOperation } from './parsers.ts';
+import type { Strategy } from './strategies/Strategy.ts';
 
-interface CageRaw {
+import { buildCageConstraintChanges } from './cageConstraints.ts';
+import { CandidatesChange } from './cellChanges/CandidatesChange.ts';
+import { CandidatesStrikethrough } from './cellChanges/CandidatesStrikethrough.ts';
+import { CellClearance } from './cellChanges/CellClearance.ts';
+import { ValueChange } from './cellChanges/ValueChange.ts';
+import {
+  cellRefA1,
+  parseOperation
+} from './parsers.ts';
+import { ensureNonNullable } from './typeGuards.ts';
+
+export interface CageRaw {
   readonly cells: readonly string[];
   readonly label?: string;
   readonly operator?: string;
   readonly value?: number;
 }
 
-interface CandidatesOperation {
-  readonly type: 'candidates';
-  readonly values: readonly number[];
-}
-
-interface CellCandidatesSetter {
-  readonly cell: Cell;
-  readonly values: readonly number[];
-}
-
-type CellOperation = CandidatesOperation | ClearanceOperation | StrikethroughOperation | ValueOperation;
-
-interface CellRef {
-  readonly columnId: number;
-  readonly rowId: number;
-}
-
-interface CellValueSetter {
+export interface CellValueSetter {
   readonly cell: Cell;
   readonly value: number;
 }
 
-interface ClearanceOperation {
-  readonly type: 'clear';
-}
+export type HouseType = 'column' | 'row';
 
-interface EnterCommand {
-  readonly cells: readonly Cell[];
-  readonly operation: CellOperation;
-}
-
-interface GridBoundaries {
-  readonly horizontalBounds: readonly (readonly boolean[])[];
-  readonly verticalBounds: readonly (readonly boolean[])[];
-}
-
-type HouseType = 'column' | 'row';
-
-interface PuzzleJson {
+export interface PuzzleJson {
   readonly cages: readonly CageRaw[];
   readonly hasOperators?: boolean;
   readonly meta?: string;
@@ -59,7 +35,7 @@ interface PuzzleJson {
   readonly title?: string;
 }
 
-interface PuzzleRenderer {
+export interface PuzzleRenderer {
   beginPendingRender(gridSize: number): void;
   renderCommittedChanges(gridSize: number): void;
   renderPendingCandidates(change: CandidatesChange): void;
@@ -68,27 +44,20 @@ interface PuzzleRenderer {
   renderPendingValue(change: ValueChange): void;
 }
 
-interface PuzzleState {
+export interface PuzzleState {
   readonly cages: readonly CageRaw[];
   readonly hasOperators: boolean;
   readonly size: number;
 }
 
-interface Strategy {
-  tryApply(puzzle: Puzzle): null | readonly CellChange[];
+interface EnterCommand {
+  readonly cells: readonly Cell[];
+  readonly operation: CellOperation;
 }
 
-interface StrikethroughOperation {
-  readonly type: 'strikethrough';
-  readonly values: readonly number[];
-}
+const CHAR_CODE_A = 65;
 
-interface ValueOperation {
-  readonly type: 'value';
-  readonly value: number;
-}
-
-class Cage {
+export class Cage {
   public get topLeft(): Cell {
     return ensureNonNullable(this.cells[0]);
   }
@@ -113,46 +82,7 @@ class Cage {
   }
 }
 
-abstract class CellChange {
-  protected constructor(public readonly cell: Cell) {
-  }
-
-  public abstract applyToModel(): void;
-  public abstract renderPending(renderer: PuzzleRenderer): void;
-}
-
-class CandidatesChange extends CellChange {
-  public constructor(cell: Cell, public readonly values: readonly number[]) {
-    super(cell);
-  }
-
-  public applyToModel(): void {
-    this.cell.setCandidates(this.values);
-    this.cell.clearValue();
-  }
-
-  public renderPending(renderer: PuzzleRenderer): void {
-    renderer.renderPendingCandidates(this);
-  }
-}
-
-class CandidatesStrikethrough extends CellChange {
-  public constructor(cell: Cell, public readonly values: readonly number[]) {
-    super(cell);
-  }
-
-  public applyToModel(): void {
-    for (const v of this.values) {
-      this.cell.removeCandidate(v);
-    }
-  }
-
-  public renderPending(renderer: PuzzleRenderer): void {
-    renderer.renderPendingStrikethrough(this);
-  }
-}
-
-class Cell {
+export class Cell {
   public readonly ref: string;
   public get cage(): Cage {
     return this.puzzle.getCage(this.cageIndex + 1);
@@ -217,9 +147,6 @@ class Cell {
     private readonly colIndex: number,
     private readonly cageIndex: number
   ) {
-    this.rowIndex = rowIndex;
-    this.colIndex = colIndex;
-    this.cageIndex = cageIndex;
     this.ref = cellRefA1(rowIndex, colIndex);
   }
 
@@ -263,22 +190,7 @@ class Cell {
   }
 }
 
-class CellClearance extends CellChange {
-  public constructor(cell: Cell) {
-    super(cell);
-  }
-
-  public applyToModel(): void {
-    this.cell.clearValue();
-    this.cell.clearCandidates();
-  }
-
-  public renderPending(renderer: PuzzleRenderer): void {
-    renderer.renderPendingClearance(this);
-  }
-}
-
-class House {
+export class House {
   public readonly label: string;
 
   public constructor(public readonly type: HouseType, public readonly id: number, public readonly cells: readonly Cell[]) {
@@ -294,14 +206,13 @@ class House {
   }
 }
 
-class Puzzle {
+export class Puzzle {
   public readonly cages: readonly Cage[];
   public readonly cells: readonly Cell[];
   public readonly columns: readonly House[];
   public readonly houses: readonly House[];
   public readonly rows: readonly House[];
   private pendingChanges: readonly CellChange[] = [];
-  private readonly strategies: readonly Strategy[];
 
   public constructor(
     private readonly renderer: PuzzleRenderer,
@@ -310,6 +221,7 @@ class Puzzle {
     public readonly hasOperators: boolean,
     public readonly title: string,
     public readonly meta: string,
+    private readonly strategies: readonly Strategy[],
     initialValues?: Map<string, number>,
     initialCandidates?: Map<string, Set<number>>
   ) {
@@ -369,12 +281,6 @@ class Puzzle {
         this.getCell(ref).setCandidates(cands);
       }
     }
-
-    this.strategies = [
-      new SingleCandidateStrategy(),
-      new HiddenSingleStrategy(),
-      ...Array.from({ length: size - MIN_NAKED_SET_SIZE }, (_, i) => new NakedSetStrategy(i + MIN_NAKED_SET_SIZE))
-    ];
   }
 
   public applyChanges(changes: readonly CellChange[]): void {
@@ -546,327 +452,5 @@ class Puzzle {
   }
 }
 
-class ValueChange extends CellChange {
-  public constructor(cell: Cell, public readonly value: number) {
-    super(cell);
-  }
-
-  public applyToModel(): void {
-    this.cell.setValue(this.value);
-    this.cell.clearCandidates();
-  }
-
-  public renderPending(renderer: PuzzleRenderer): void {
-    renderer.renderPendingValue(this);
-  }
-}
-
-const BINARY_OP_SIZE = 2;
-const CHAR_CODE_A = 65;
-const MIN_NAKED_SET_SIZE = 2;
-
-function applyCageConstraint(
-  cage: Cage,
-  hasOperators: boolean,
-  gridSize: number,
-  valueSetters: CellValueSetter[],
-  candidateChanges: CellChange[],
-  narrowedCells: Set<Cell>
-): void {
-  const cageValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
-  if (cageValue === undefined || isNaN(cageValue)) {
-    return;
-  }
-
-  const tuples = collectCageTuples(cageValue, cage, hasOperators, gridSize);
-  if (tuples.length === 0) {
-    return;
-  }
-
-  if (tuples.length === 1) {
-    const tuple = ensureNonNullable(tuples[0]);
-    for (let i = 0; i < cage.cells.length; i++) {
-      valueSetters.push({ cell: ensureNonNullable(cage.cells[i]), value: ensureNonNullable(tuple[i]) });
-    }
-    return;
-  }
-
-  const distinctSets = new Set<string>(tuples.map(
-    (t) => [...new Set(t)].sort((a, b) => a - b).join(',')
-  ));
-  if (distinctSets.size !== 1) {
-    return;
-  }
-
-  const narrowedValues = ensureNonNullable([...distinctSets][0]).split(',').map(Number);
-  if (narrowedValues.length >= gridSize) {
-    return;
-  }
-
-  for (const cell of cage.cells) {
-    candidateChanges.push(new CandidatesChange(cell, narrowedValues));
-    narrowedCells.add(cell);
-  }
-}
-
-function buildAutoEliminateChanges(
-  cellValueSetters: readonly CellValueSetter[]
-): CellChange[] {
-  const changes: CellChange[] = [];
-  for (const setter of cellValueSetters) {
-    changes.push(new ValueChange(setter.cell, setter.value));
-    for (const peer of setter.cell.peers) {
-      changes.push(new CandidatesStrikethrough(peer, [setter.value]));
-    }
-  }
-  return changes;
-}
-
-function buildCageConstraintChanges(
-  cages: readonly Cage[],
-  hasOperators: boolean,
-  gridSize: number
-): CellChange[] {
-  const valueSetters: CellValueSetter[] = [];
-  const candidateChanges: CellChange[] = [];
-  const narrowedCells = new Set<Cell>();
-  for (const cage of cages) {
-    if (cage.cells.length === 1) {
-      const cellValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
-      if (cellValue !== undefined && !isNaN(cellValue)) {
-        valueSetters.push({ cell: ensureNonNullable(cage.cells[0]), value: cellValue });
-      }
-      continue;
-    }
-
-    applyCageConstraint(cage, hasOperators, gridSize, valueSetters, candidateChanges, narrowedCells);
-  }
-
-  const valuedCells = new Set(valueSetters.map((s) => s.cell));
-  const autoChanges = buildAutoEliminateChanges(valueSetters);
-  const filteredChanges = autoChanges.filter(
-    (change) => !(change instanceof CandidatesStrikethrough
-      && (narrowedCells.has(change.cell) || valuedCells.has(change.cell)))
-  );
-  return [...filteredChanges, ...candidateChanges];
-}
-
-function cellRefA1(r: number, c: number): string {
-  return String.fromCharCode(CHAR_CODE_A + c) + String(r + 1);
-}
-
-function collectCageTuples(
-  cageValue: number,
-  cage: Cage,
-  hasOperators: boolean,
-  gridSize: number
-): number[][] {
-  if (hasOperators && cage.operator) {
-    return computeValidCageTuples(cageValue, cage.operator, cage.cells, gridSize);
-  }
-  const tupleSet = new Set<string>();
-  const tuples: number[][] = [];
-  for (const op of ['+', '-', 'x', '/']) {
-    for (const t of computeValidCageTuples(cageValue, op, cage.cells, gridSize)) {
-      const key = t.join(',');
-      if (!tupleSet.has(key)) {
-        tupleSet.add(key);
-        tuples.push(t);
-      }
-    }
-  }
-  return tuples;
-}
-
-function computeGridBoundaries(cages: readonly CageRaw[], gridDimension: number): GridBoundaries {
-  const cellToCage: Record<string, number> = {};
-  for (let cageIndex = 0; cageIndex < cages.length; cageIndex++) {
-    const cage = ensureNonNullable(cages[cageIndex]);
-    for (const cell of cage.cells) {
-      cellToCage[cell] = cageIndex;
-    }
-  }
-
-  const verticalBounds: boolean[][] = [];
-  const horizontalBounds: boolean[][] = [];
-  for (let r = 0; r < gridDimension; r++) {
-    const row: boolean[] = [];
-    verticalBounds[r] = row;
-    for (let c = 1; c < gridDimension; c++) {
-      row[c - 1] = cellToCage[cellRefA1(r, c - 1)] !== cellToCage[cellRefA1(r, c)];
-    }
-  }
-  for (let r = 1; r < gridDimension; r++) {
-    const row: boolean[] = [];
-    horizontalBounds[r - 1] = row;
-    for (let c = 0; c < gridDimension; c++) {
-      row[c] = cellToCage[cellRefA1(r - 1, c)] !== cellToCage[cellRefA1(r, c)];
-    }
-  }
-
-  return { horizontalBounds, verticalBounds };
-}
-
-function computeValidCageTuples(
-  value: number,
-  operator: string,
-  cells: readonly Cell[],
-  gridSize: number
-): number[][] {
-  const tuples: number[][] = [];
-  const numCells = cells.length;
-
-  function search(tuple: number[], depth: number): void {
-    if (depth === numCells) {
-      if (evaluateTuple(tuple, operator) === value) {
-        tuples.push([...tuple]);
-      }
-      return;
-    }
-    const cell = ensureNonNullable(cells[depth]);
-    for (let v = 1; v <= gridSize; v++) {
-      let valid = true;
-      for (let i = 0; i < depth; i++) {
-        if (ensureNonNullable(tuple[i]) === v) {
-          const prevCell = ensureNonNullable(cells[i]);
-          if (prevCell.row === cell.row || prevCell.column === cell.column) {
-            valid = false;
-            break;
-          }
-        }
-      }
-      if (!valid) {
-        continue;
-      }
-      tuple.push(v);
-      search(tuple, depth + 1);
-      tuple.pop();
-    }
-  }
-
-  search([], 0);
-  return tuples;
-}
-
-function evaluateTuple(tuple: readonly number[], operator: string): null | number {
-  if (tuple.length === 0) {
-    return null;
-  }
-  if (tuple.length === 1) {
-    return ensureNonNullable(tuple[0]);
-  }
-
-  const a = ensureNonNullable(tuple[0]);
-  const b = ensureNonNullable(tuple[1]);
-
-  switch (operator) {
-    case '-': {
-      if (tuple.length !== BINARY_OP_SIZE) {
-        return null;
-      }
-      return Math.abs(a - b);
-    }
-    case '*':
-    case 'x': {
-      let product = 1;
-      for (const d of tuple) {
-        product *= d;
-      }
-      return product;
-    }
-    case '/': {
-      if (tuple.length !== BINARY_OP_SIZE) {
-        return null;
-      }
-      const maxD = Math.max(a, b);
-      const minD = Math.min(a, b);
-      if (minD === 0) {
-        return null;
-      }
-      return maxD % minD === 0 ? maxD / minD : null;
-    }
-    case '+': {
-      let sum = 0;
-      for (const d of tuple) {
-        sum += d;
-      }
-      return sum;
-    }
-    default:
-      return null;
-  }
-}
-
-function generateSubsets<T>(items: readonly T[], k: number): T[][] {
-  if (k === 0) {
-    return [[]];
-  }
-  if (k > items.length) {
-    return [];
-  }
-
-  const results: T[][] = [];
-  const indices: number[] = Array.from({ length: k }, (_, i) => i);
-
-  for (;;) {
-    results.push(indices.map((idx) => ensureNonNullable(items[idx])));
-
-    let pos = k - 1;
-    while (pos >= 0 && ensureNonNullable(indices[pos]) === pos + items.length - k) {
-      pos--;
-    }
-    if (pos < 0) {
-      break;
-    }
-    indices[pos] = ensureNonNullable(indices[pos]) + 1;
-    for (let j = pos + 1; j < k; j++) {
-      indices[j] = ensureNonNullable(indices[j - 1]) + 1;
-    }
-  }
-
-  return results;
-}
-
-function parseCellRef(token: string): CellRef {
-  const m = /^(?<col>[A-Z])(?<row>[1-9]\d*)$/.exec(token.trim().toUpperCase());
-  if (!m) {
-    throw new Error(`Bad cell ref: ${token}`);
-  }
-  const groups = ensureNonNullable(m.groups);
-  return {
-    columnId: ensureNonNullable(groups['col']).charCodeAt(0) - CHAR_CODE_A + 1,
-    rowId: parseInt(ensureNonNullable(groups['row']), 10)
-  };
-}
-
-function parseOperation(text: string, cellCount: number): CellOperation {
-  if (text.toLowerCase() === 'x') {
-    return { type: 'clear' };
-  }
-
-  if (text.startsWith('=')) {
-    const valueStr = text.substring(1);
-    if (!/^[1-9]$/.test(valueStr)) {
-      throw new Error('=N expects a single digit 1-9');
-    }
-    if (cellCount > 1) {
-      throw new Error('=N can only be used with a single cell');
-    }
-    return { type: 'value', value: parseInt(valueStr, 10) };
-  }
-
-  if (text.startsWith('-')) {
-    const valuesStr = text.substring(1);
-    if (!/^[1-9]+$/.test(valuesStr)) {
-      throw new Error('-digits expects digits 1-9');
-    }
-    const values = Array.from(valuesStr, (ch) => parseInt(ch, 10));
-    return { type: 'strikethrough', values };
-  }
-
-  if (!/^[1-9]+$/.test(text)) {
-    throw new Error(`Expected digits 1-9: ${text}`);
-  }
-  const values = Array.from(text, (ch) => parseInt(ch, 10));
-  return { type: 'candidates', values };
-}
+// Re-export parseCellRef for use outside
+import { parseCellRef } from './parsers.ts';

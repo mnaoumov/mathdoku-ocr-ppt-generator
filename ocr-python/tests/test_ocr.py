@@ -1,8 +1,8 @@
 """
 Unit tests for OCR Mathdoku puzzle recognition.
 
-Tests compare OCR output against ground truth YAML files in tests/fixtures/.
-Run with: pytest tests/test_ocr.py -v
+Tests compare OCR output against ground truth YAML files in ocr/tests/fixtures/.
+Run with: uv run pytest
 """
 from __future__ import annotations
 

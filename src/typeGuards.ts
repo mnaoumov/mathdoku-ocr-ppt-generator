@@ -1,8 +1,4 @@
-/**
- * Utils.ts -- Generic utility functions (zero business logic, zero Google Slides references).
- */
-
-function assertNonNullable<T>(value: T, errorOrMessage?: Error | string): asserts value is NonNullable<T> {
+export function assertNonNullable<T>(value: T, errorOrMessage?: Error | string): asserts value is NonNullable<T> {
   if (value !== null && value !== undefined) {
     return;
   }
@@ -11,7 +7,7 @@ function assertNonNullable<T>(value: T, errorOrMessage?: Error | string): assert
   throw error;
 }
 
-function ensureNonNullable<T>(value: T, errorOrMessage?: Error | string): NonNullable<T> {
+export function ensureNonNullable<T>(value: T, errorOrMessage?: Error | string): NonNullable<T> {
   assertNonNullable(value, errorOrMessage);
   return value;
 }

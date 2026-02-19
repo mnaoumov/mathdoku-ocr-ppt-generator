@@ -122,12 +122,15 @@ const SCOPES = [
 
 async function bindAppsScript(auth: OAuth2Client, presId: string): Promise<string> {
   const scriptSvc = google.script({ auth, version: 'v1' });
-  const appsDir = resolve(ROOT, 'apps-script');
+  const appsDir = resolve(ROOT, 'dist');
 
   const project = await scriptSvc.projects.create({
     requestBody: { parentId: presId, title: 'Mathdoku Solver' }
   });
-  const scriptId = project.data.scriptId!;
+  const scriptId = project.data.scriptId;
+  if (!scriptId) {
+    throw new Error('Apps Script project creation returned no scriptId');
+  }
 
   const files: ScriptFile[] = [];
   for (const entry of readdirSync(appsDir).sort()) {
@@ -237,7 +240,10 @@ async function buildSlides(specPath: string): Promise<string> {
         name
       }
     });
-    presId = driveFile.data.id!;
+    if (!driveFile.data.id) {
+      throw new Error('Drive file creation returned no id');
+    }
+    presId = driveFile.data.id;
     console.log(`Created presentation: ${name} (${presId})`);
 
     // 2. Bind Apps Script

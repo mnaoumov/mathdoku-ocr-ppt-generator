@@ -1,4 +1,6 @@
 __pycache__
+.venv/
+.pytest_cache/
 
 credentials.json
 token.json
@@ -7,8 +9,8 @@ token.json
 node_modules/
 package-lock.json
 
-# Compiled Apps Script (source is .ts)
-apps-script/*.js
+# Build output (only the bundled JS; static files in dist/ are tracked)
+dist/Code.js
 
 *.pptm
 

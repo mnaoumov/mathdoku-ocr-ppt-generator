@@ -2,17 +2,17 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p apps-script",
-    "check": "npm run spellcheck && npm run lint && npm run format:check && npm run build && tsc",
+    "build": "jiti scripts/build.ts",
+    "check": "npm run spellcheck && npm run lint && npm run format:check && tsc",
     "format:check": "dprint check",
     "format": "dprint fmt",
     "lint:fix": "eslint . --fix",
     "lint": "eslint .",
     "makeMathdokuSlides:fast": "jiti scripts/makeMathdokuSlides.ts",
     "makeMathdokuSlides": "npm run build && npm run makeMathdokuSlides:fast",
-    "ocrMathdoku": "uv run ocr/ocr_mathdoku.py",
     "spellcheck": "cspell . --no-progress",
-    "test": "uv run pytest"
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@eslint-community/eslint-plugin-eslint-comments": "^4",
@@ -26,8 +26,10 @@
     "eslint": "^9",
     "eslint-plugin-perfectionist": "^4",
     "jiti": "^2.6.1",
+    "rollup-plugin-gas": "^1.0.0",
     "typescript": "^5.7",
-    "typescript-eslint": "^8"
+    "typescript-eslint": "^8",
+    "vitest": "^4.0.18"
   },
   "dependencies": {
     "googleapis": "^171.4.0",

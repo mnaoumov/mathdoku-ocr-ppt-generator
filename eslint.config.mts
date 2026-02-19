@@ -75,16 +75,20 @@ export default defineConfig(
       '@typescript-eslint/no-invalid-void-type': ['error', {
         allowAsThisParameter: true
       }],
-      '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-this-alias': ['error', {
         allowedNames: ['that']
       }],
-      // Disabled: TypeScript handles via noUnusedLocals/noUnusedParameters.
-      // ESLint can't see cross-file usage in Apps Script's global scope (module: "None").
-      '@typescript-eslint/no-unused-vars': 'off',
-      '@typescript-eslint/prefer-nullish-coalescing': [
+      '@typescript-eslint/no-unused-vars': [
         'error',
-        { ignorePrimitives: { boolean: true } }
+        {
+          args: 'all',
+          argsIgnorePattern: '^_',
+          caughtErrors: 'all',
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+          ignoreRestSiblings: true,
+          varsIgnorePattern: '^_'
+        }
       ],
       '@typescript-eslint/prefer-readonly': 'error',
       'accessor-pairs': 'error',
@@ -198,6 +202,12 @@ export default defineConfig(
       'unicode-bom': 'error',
       'vars-on-top': 'error',
       'yoda': 'error'
+    }
+  },
+  {
+    files: ['__tests__/**/*.ts'],
+    rules: {
+      'no-magic-numbers': 'off'
     }
   }
 );

@@ -1,8 +1,14 @@
-/**
- * SingleCandidateStrategy.ts -- cells with exactly 1 candidate -> set value.
- */
+import type { CellChange } from '../cellChanges/CellChange.ts';
+import type {
+  CellValueSetter,
+  Puzzle
+} from '../Puzzle.ts';
+import type { Strategy } from './Strategy.ts';
 
-class SingleCandidateStrategy implements Strategy {
+import { buildAutoEliminateChanges } from '../cageConstraints.ts';
+import { ensureNonNullable } from '../typeGuards.ts';
+
+export class SingleCandidateStrategy implements Strategy {
   public tryApply(puzzle: Puzzle): CellChange[] | null {
     const results: CellValueSetter[] = [];
     for (const cell of puzzle.cells) {

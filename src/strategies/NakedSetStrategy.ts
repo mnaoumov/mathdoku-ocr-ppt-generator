@@ -1,8 +1,14 @@
-/**
- * NakedSetStrategy.ts -- naked set of size k: k cells whose combined candidates = k values.
- */
+import type { CellChange } from '../cellChanges/CellChange.ts';
+import type {
+  Cell,
+  Puzzle
+} from '../Puzzle.ts';
+import type { Strategy } from './Strategy.ts';
 
-class NakedSetStrategy implements Strategy {
+import { CandidatesStrikethrough } from '../cellChanges/CandidatesStrikethrough.ts';
+import { generateSubsets } from '../combinatorics.ts';
+
+export class NakedSetStrategy implements Strategy {
   public constructor(private readonly subsetSize: number) {
   }
 

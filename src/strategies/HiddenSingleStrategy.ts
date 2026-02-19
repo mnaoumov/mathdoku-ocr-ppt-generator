@@ -1,8 +1,15 @@
-/**
- * HiddenSingleStrategy.ts -- value appears in only 1 cell in a house -> set value.
- */
+import type { CellChange } from '../cellChanges/CellChange.ts';
+import type {
+  Cell,
+  CellValueSetter,
+  House,
+  Puzzle
+} from '../Puzzle.ts';
+import type { Strategy } from './Strategy.ts';
 
-class HiddenSingleStrategy implements Strategy {
+import { buildAutoEliminateChanges } from '../cageConstraints.ts';
+
+export class HiddenSingleStrategy implements Strategy {
   public tryApply(puzzle: Puzzle): CellChange[] | null {
     const results: CellValueSetter[] = [];
     const seen = new Set<Cell>();
