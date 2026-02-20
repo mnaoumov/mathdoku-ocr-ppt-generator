@@ -8,7 +8,7 @@ import { CellClearance } from './cellChanges/CellClearance.ts';
 import { ValueChange } from './cellChanges/ValueChange.ts';
 import { evaluateTuple } from './combinatorics.ts';
 import {
-  cellRefA1,
+  getCellRef,
   parseOperation
 } from './parsers.ts';
 import { ensureNonNullable } from './typeGuards.ts';
@@ -110,7 +110,7 @@ export class Cage {
 export class Cell {
   public readonly ref: string;
   public get cage(): Cage {
-    return this.puzzle.getCage(this.cageIndex + 1);
+    return this.puzzle.getCage(this.cageId);
   }
 
   public get candidateCount(): number {
@@ -118,7 +118,7 @@ export class Cell {
   }
 
   public get column(): House {
-    return this.puzzle.getColumn(this.colIndex + 1);
+    return this.puzzle.getColumn(this.columnId);
   }
 
   public get isSolved(): boolean {
@@ -154,7 +154,7 @@ export class Cell {
   }
 
   public get row(): House {
-    return this.puzzle.getRow(this.rowIndex + 1);
+    return this.puzzle.getRow(this.rowId);
   }
 
   public get value(): null | number {
@@ -168,15 +168,15 @@ export class Cell {
 
   public constructor(
     private readonly puzzle: Puzzle,
-    private readonly rowIndex: number,
-    private readonly colIndex: number,
-    private readonly cageIndex: number
+    private readonly rowId: number,
+    private readonly columnId: number,
+    private readonly cageId: number
   ) {
-    this.ref = cellRefA1(rowIndex, colIndex);
+    this.ref = getCellRef(rowId, columnId);
   }
 
   public static compare(a: Cell, b: Cell): number {
-    return a.rowIndex - b.rowIndex || a.colIndex - b.colIndex;
+    return a.rowId - b.rowId || a.columnId - b.columnId;
   }
 
   public addCandidate(value: number): void {
@@ -259,47 +259,47 @@ export class Puzzle {
     this.strategies = strategies;
     this.title = title;
 
-    const cellToCageIndex: Record<string, number> = {};
-    for (let i = 0; i < cagesRaw.length; i++) {
-      const cage = ensureNonNullable(cagesRaw[i]);
+    const cellToCageId: Record<string, number> = {};
+    for (let cageId = 1; cageId <= cagesRaw.length; cageId++) {
+      const cage = ensureNonNullable(cagesRaw[cageId - 1]);
       for (const cellRef of cage.cells) {
-        cellToCageIndex[cellRef] = i;
+        cellToCageId[cellRef] = cageId;
       }
     }
 
     const grid: Cell[][] = [];
-    for (let r = 0; r < puzzleSize; r++) {
+    for (let rowId = 1; rowId <= puzzleSize; rowId++) {
       const row: Cell[] = [];
-      for (let c = 0; c < puzzleSize; c++) {
-        const ref = cellRefA1(r, c);
-        const cageIndex = cellToCageIndex[ref];
-        if (cageIndex === undefined) {
+      for (let columnId = 1; columnId <= puzzleSize; columnId++) {
+        const ref = getCellRef(rowId, columnId);
+        const cageId = cellToCageId[ref];
+        if (cageId === undefined) {
           throw new Error(`Cell ${ref} not found in any cage`);
         }
-        row.push(new Cell(this, r, c, cageIndex));
+        row.push(new Cell(this, rowId, columnId, cageId));
       }
       grid.push(row);
     }
 
     const rows: House[] = [];
     const columns: House[] = [];
-    for (let i = 0; i < puzzleSize; i++) {
-      rows.push(new House('row', i + 1, ensureNonNullable(grid[i])));
-      columns.push(new House('column', i + 1, grid.map((gridRow) => ensureNonNullable(gridRow[i]))));
+    for (let houseId = 1; houseId <= puzzleSize; houseId++) {
+      rows.push(new House('row', houseId, ensureNonNullable(grid[houseId - 1])));
+      columns.push(new House('column', houseId, grid.map((gridRow) => ensureNonNullable(gridRow[houseId - 1]))));
     }
     this.rows = rows;
     this.columns = columns;
     this.houses = [...rows, ...columns];
 
     const cages: Cage[] = [];
-    for (let i = 0; i < cagesRaw.length; i++) {
-      const raw = ensureNonNullable(cagesRaw[i]);
+    for (let cageId = 1; cageId <= cagesRaw.length; cageId++) {
+      const raw = ensureNonNullable(cagesRaw[cageId - 1]);
       const cageCells = raw.cells.map((ref) => {
         const parsed = parseCellRef(ref);
         return ensureNonNullable(ensureNonNullable(grid[parsed.rowId - 1])[parsed.columnId - 1]);
       });
       cageCells.sort((a, b) => a.row.id - b.row.id || a.column.id - b.column.id);
-      cages.push(new Cage(i + 1, cageCells, raw.label, raw.operator, raw.value));
+      cages.push(new Cage(cageId, cageCells, raw.label, raw.operator, raw.value));
     }
     this.cages = cages;
 
@@ -503,9 +503,9 @@ export class Puzzle {
     const minCol = Math.min(start.columnId, end.columnId);
     const maxCol = Math.max(start.columnId, end.columnId);
     const cells: Cell[] = [];
-    for (let r = minRow; r <= maxRow; r++) {
-      for (let c = minCol; c <= maxCol; c++) {
-        cells.push(this.getCell(r, c));
+    for (let rowId = minRow; rowId <= maxRow; rowId++) {
+      for (let columnId = minCol; columnId <= maxCol; columnId++) {
+        cells.push(this.getCell(rowId, columnId));
       }
     }
     return cells;

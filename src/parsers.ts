@@ -28,8 +28,8 @@ interface ValueOperation {
 
 const CHAR_CODE_A = 65;
 
-export function cellRefA1(r: number, c: number): string {
-  return String.fromCharCode(CHAR_CODE_A + c) + String(r + 1);
+export function getCellRef(rowId: number, columnId: number): string {
+  return String.fromCharCode(CHAR_CODE_A + columnId - 1) + String(rowId);
 }
 
 export function parseCellRef(token: string): CellRef {

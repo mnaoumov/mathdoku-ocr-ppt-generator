@@ -1,6 +1,6 @@
 import type { CageRaw } from './Puzzle.ts';
 
-import { cellRefA1 } from './parsers.ts';
+import { getCellRef } from './parsers.ts';
 import { ensureNonNullable } from './typeGuards.ts';
 
 export interface GridBoundaries {
@@ -9,30 +9,31 @@ export interface GridBoundaries {
 }
 
 const BINARY_OP_SIZE = 2;
+const FIRST_INNER_BOUNDARY_ID = 2;
 
 export function computeGridBoundaries(cages: readonly CageRaw[], puzzleSize: number): GridBoundaries {
   const cellToCage: Record<string, number> = {};
-  for (let cageIndex = 0; cageIndex < cages.length; cageIndex++) {
-    const cage = ensureNonNullable(cages[cageIndex]);
+  for (let cageId = 1; cageId <= cages.length; cageId++) {
+    const cage = ensureNonNullable(cages[cageId - 1]);
     for (const cell of cage.cells) {
-      cellToCage[cell] = cageIndex;
+      cellToCage[cell] = cageId;
     }
   }
 
   const verticalBounds: boolean[][] = [];
   const horizontalBounds: boolean[][] = [];
-  for (let r = 0; r < puzzleSize; r++) {
+  for (let rowId = 1; rowId <= puzzleSize; rowId++) {
     const row: boolean[] = [];
-    verticalBounds[r] = row;
-    for (let c = 1; c < puzzleSize; c++) {
-      row[c - 1] = cellToCage[cellRefA1(r, c - 1)] !== cellToCage[cellRefA1(r, c)];
+    verticalBounds[rowId - 1] = row;
+    for (let columnId = FIRST_INNER_BOUNDARY_ID; columnId <= puzzleSize; columnId++) {
+      row[columnId - FIRST_INNER_BOUNDARY_ID] = cellToCage[getCellRef(rowId, columnId - 1)] !== cellToCage[getCellRef(rowId, columnId)];
     }
   }
-  for (let r = 1; r < puzzleSize; r++) {
+  for (let rowId = FIRST_INNER_BOUNDARY_ID; rowId <= puzzleSize; rowId++) {
     const row: boolean[] = [];
-    horizontalBounds[r - 1] = row;
-    for (let c = 0; c < puzzleSize; c++) {
-      row[c] = cellToCage[cellRefA1(r - 1, c)] !== cellToCage[cellRefA1(r, c)];
+    horizontalBounds[rowId - FIRST_INNER_BOUNDARY_ID] = row;
+    for (let columnId = 1; columnId <= puzzleSize; columnId++) {
+      row[columnId - 1] = cellToCage[getCellRef(rowId - 1, columnId)] !== cellToCage[getCellRef(rowId, columnId)];
     }
   }
 

@@ -5,22 +5,22 @@ import {
 } from 'vitest';
 
 import {
-  cellRefA1,
+  getCellRef,
   parseCellRef,
   parseOperation
 } from '../src/parsers.ts';
 
-describe('cellRefA1', () => {
-  it('converts row 0 col 0 to A1', () => {
-    expect(cellRefA1(0, 0)).toBe('A1');
+describe('getCellRef', () => {
+  it('converts row 1 col 1 to A1', () => {
+    expect(getCellRef(1, 1)).toBe('A1');
   });
 
-  it('converts row 0 col 4 to E1', () => {
-    expect(cellRefA1(0, 4)).toBe('E1');
+  it('converts row 1 col 5 to E1', () => {
+    expect(getCellRef(1, 5)).toBe('E1');
   });
 
-  it('converts row 3 col 2 to C4', () => {
-    expect(cellRefA1(3, 2)).toBe('C4');
+  it('converts row 4 col 3 to C4', () => {
+    expect(getCellRef(4, 3)).toBe('C4');
   });
 });
 

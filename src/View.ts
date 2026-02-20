@@ -11,7 +11,7 @@ import type {
 
 import { computeGridBoundaries } from './combinatorics.ts';
 import {
-  cellRefA1,
+  getCellRef,
   parseCellRef
 } from './parsers.ts';
 import {
@@ -406,9 +406,9 @@ function buildPuzzleFromSlide(): Puzzle {
   const values = new Map<string, number>();
   const candidates = new Map<string, Set<number>>();
 
-  for (let r = 0; r < state.puzzleSize; r++) {
-    for (let c = 0; c < state.puzzleSize; c++) {
-      const ref = cellRefA1(r, c);
+  for (let rowId = 1; rowId <= state.puzzleSize; rowId++) {
+    for (let columnId = 1; columnId <= state.puzzleSize; columnId++) {
+      const ref = getCellRef(rowId, columnId);
       readCellFromSlide(slide, ref, values, candidates);
     }
   }
@@ -457,9 +457,9 @@ function drawAxisLabels(ctx: GridRenderContext): void {
   const sideX = pt(gridLeft - sideOffset);
 
   let columnLeft = gridLeft;
-  for (let c = 0; c < puzzleSize; c++) {
+  for (let columnId = 1; columnId <= puzzleSize; columnId++) {
     const boxWidth = pt(cellWidth);
-    const box = slide.insertTextBox(String.fromCharCode(CHAR_CODE_A + c), pt(columnLeft), topY, boxWidth, labelHeight);
+    const box = slide.insertTextBox(String.fromCharCode(CHAR_CODE_A + columnId - 1), pt(columnLeft), topY, boxWidth, labelHeight);
     box.getText().getTextStyle()
       .setFontFamily('Segoe UI').setFontSize(axisFont).setBold(true).setForegroundColor(AXIS_LABEL_MAGENTA);
     box.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
@@ -467,9 +467,9 @@ function drawAxisLabels(ctx: GridRenderContext): void {
     columnLeft += cellWidth;
   }
 
-  for (let r = 0; r < puzzleSize; r++) {
-    const y = pt(gridTop + r * cellWidth + (cellWidth - labelHeight) / SIDE_COUNT);
-    const box = slide.insertTextBox(String(r + 1), sideX, y, labelWidth, labelHeight);
+  for (let rowId = 1; rowId <= puzzleSize; rowId++) {
+    const y = pt(gridTop + (rowId - 1) * cellWidth + (cellWidth - labelHeight) / SIDE_COUNT);
+    const box = slide.insertTextBox(String(rowId), sideX, y, labelWidth, labelHeight);
     box.getText().getTextStyle()
       .setFontFamily('Segoe UI').setFontSize(axisFont).setBold(true).setForegroundColor(AXIS_LABEL_MAGENTA);
     box.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
@@ -484,53 +484,53 @@ function drawCageBoundaries(ctx: GridRenderContext): void {
   const cellWidth = gridSize / puzzleSize;
   const inset = thickPt / SIDE_COUNT;
 
-  for (let c = 1; c < puzzleSize; c++) {
-    let startRow = 0;
-    while (startRow < puzzleSize) {
-      if (!ensureNonNullable(verticalBounds[startRow])[c - 1]) {
-        startRow++;
+  for (let columnId = FIRST_INNER_BOUNDARY_ID; columnId <= puzzleSize; columnId++) {
+    let startRowId = 1;
+    while (startRowId <= puzzleSize) {
+      if (!ensureNonNullable(verticalBounds[startRowId - 1])[columnId - FIRST_INNER_BOUNDARY_ID]) {
+        startRowId++;
         continue;
       }
-      let endRow = startRow;
-      while (endRow + 1 < puzzleSize && ensureNonNullable(verticalBounds[endRow + 1])[c - 1]) {
-        endRow++;
+      let endRowId = startRowId;
+      while (endRowId < puzzleSize && ensureNonNullable(verticalBounds[endRowId])[columnId - FIRST_INNER_BOUNDARY_ID]) {
+        endRowId++;
       }
-      const x = gridLeft + c * cellWidth;
-      let y1 = gridTop + startRow * cellWidth;
-      let y2 = gridTop + (endRow + 1) * cellWidth;
-      if (startRow === 0) {
+      const x = gridLeft + (columnId - 1) * cellWidth;
+      let y1 = gridTop + (startRowId - 1) * cellWidth;
+      let y2 = gridTop + endRowId * cellWidth;
+      if (startRowId === 1) {
         y1 += inset;
       }
-      if (endRow === puzzleSize - 1) {
+      if (endRowId === puzzleSize) {
         y2 -= inset;
       }
       drawThickRect(slide, x - thickPt / SIDE_COUNT, y1, thickPt, y2 - y1);
-      startRow = endRow + 1;
+      startRowId = endRowId + 1;
     }
   }
 
-  for (let r = 1; r < puzzleSize; r++) {
-    let startCol = 0;
-    while (startCol < puzzleSize) {
-      if (!ensureNonNullable(horizontalBounds[r - 1])[startCol]) {
-        startCol++;
+  for (let rowId = FIRST_INNER_BOUNDARY_ID; rowId <= puzzleSize; rowId++) {
+    let startColumnId = 1;
+    while (startColumnId <= puzzleSize) {
+      if (!ensureNonNullable(horizontalBounds[rowId - FIRST_INNER_BOUNDARY_ID])[startColumnId - 1]) {
+        startColumnId++;
         continue;
       }
-      let endCol = startCol;
-      while (endCol + 1 < puzzleSize && ensureNonNullable(horizontalBounds[r - 1])[endCol + 1]) {
-        endCol++;
+      let endColumnId = startColumnId;
+      while (endColumnId < puzzleSize && ensureNonNullable(horizontalBounds[rowId - FIRST_INNER_BOUNDARY_ID])[endColumnId]) {
+        endColumnId++;
       }
-      const y = gridTop + r * cellWidth;
-      let x1 = gridLeft + startCol * cellWidth;
-      let x2 = gridLeft + (endCol + 1) * cellWidth;
-      if (startCol === 0) {
+      const y = gridTop + (rowId - 1) * cellWidth;
+      let x1 = gridLeft + (startColumnId - 1) * cellWidth;
+      let x2 = gridLeft + endColumnId * cellWidth;
+      if (startColumnId === 1) {
         x1 += inset;
       }
-      if (endCol === puzzleSize - 1) {
+      if (endColumnId === puzzleSize) {
         x2 -= inset;
       }
       drawThickRect(slide, x1, y - thickPt / SIDE_COUNT, x2 - x1, thickPt);
-      startCol = endCol + 1;
+      startColumnId = endColumnId + 1;
     }
   }
 }
@@ -630,26 +630,26 @@ function drawThinGrid(ctx: GridRenderContext): void {
   const cellWidth = gridSize / puzzleSize;
   const halfThinWidth = thinWidth / SIDE_COUNT;
 
-  for (let c = 1; c < puzzleSize; c++) {
-    for (let r = 0; r < puzzleSize; r++) {
-      if (ensureNonNullable(verticalBounds[r])[c - 1]) {
+  for (let columnId = FIRST_INNER_BOUNDARY_ID; columnId <= puzzleSize; columnId++) {
+    for (let rowId = 1; rowId <= puzzleSize; rowId++) {
+      if (ensureNonNullable(verticalBounds[rowId - 1])[columnId - FIRST_INNER_BOUNDARY_ID]) {
         continue;
       }
-      const x = gridLeft + c * cellWidth;
-      const y = gridTop + r * cellWidth;
+      const x = gridLeft + (columnId - 1) * cellWidth;
+      const y = gridTop + (rowId - 1) * cellWidth;
       const rect = slide.insertShape(SlidesApp.ShapeType.RECTANGLE, pt(x - halfThinWidth), pt(y), pt(thinWidth), pt(cellWidth));
       rect.getFill().setSolidFill(THIN_GRAY);
       rect.getBorder().setTransparent();
     }
   }
 
-  for (let r = 1; r < puzzleSize; r++) {
-    for (let c = 0; c < puzzleSize; c++) {
-      if (ensureNonNullable(horizontalBounds[r - 1])[c]) {
+  for (let rowId = FIRST_INNER_BOUNDARY_ID; rowId <= puzzleSize; rowId++) {
+    for (let columnId = 1; columnId <= puzzleSize; columnId++) {
+      if (ensureNonNullable(horizontalBounds[rowId - FIRST_INNER_BOUNDARY_ID])[columnId - 1]) {
         continue;
       }
-      const x = gridLeft + c * cellWidth;
-      const y = gridTop + r * cellWidth;
+      const x = gridLeft + (columnId - 1) * cellWidth;
+      const y = gridTop + (rowId - 1) * cellWidth;
       const rect = slide.insertShape(SlidesApp.ShapeType.RECTANGLE, pt(x), pt(y - halfThinWidth), pt(cellWidth), pt(thinWidth));
       rect.getFill().setSolidFill(THIN_GRAY);
       rect.getBorder().setTransparent();
@@ -935,11 +935,11 @@ function renderValueAndCandidateBoxes(ctx: GridRenderContext): void {
   const valueProfile = profile.value;
   const candidatesProfile = profile.candidates;
 
-  for (let r = 0; r < puzzleSize; r++) {
-    for (let c = 0; c < puzzleSize; c++) {
-      const cellLeft = gridLeft + c * cellWidth;
-      const cellTop = gridTop + r * cellWidth;
-      const ref = cellRefA1(r, c);
+  for (let rowId = 1; rowId <= puzzleSize; rowId++) {
+    for (let columnId = 1; columnId <= puzzleSize; columnId++) {
+      const cellLeft = gridLeft + (columnId - 1) * cellWidth;
+      const cellTop = gridTop + (rowId - 1) * cellWidth;
+      const ref = getCellRef(rowId, columnId);
 
       const valueBox = slide.insertTextBox(
         ' ',
@@ -1043,6 +1043,7 @@ const CANDIDATE_ROW_COUNT = 2;
 const CHAR_CODE_A = 65;
 const ENTER_DIALOG_HEIGHT_PX = 140;
 const ENTER_DIALOG_WIDTH_PX = 400;
+const FIRST_INNER_BOUNDARY_ID = 2;
 const FONT_FIT_HEIGHT_RATIO = 1.15;
 const FONT_FIT_PADDING_PT = 2;
 const FONT_FIT_WIDTH_RATIO = 0.60;
