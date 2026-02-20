@@ -11,19 +11,31 @@ import {
 } from './Puzzle.ts';
 import { ensureNonNullable } from './typeGuards.ts';
 
+export interface CageConstraintContext {
+  readonly cage: Cage;
+  readonly gridSize: number;
+  readonly hasOperators: boolean;
+}
+
+export interface CageTupleOptions {
+  readonly cells: readonly Cell[];
+  readonly gridSize: number;
+  readonly operator: string;
+  readonly value: number;
+}
+
 export function applyCageConstraint(
-  cage: Cage,
-  hasOperators: boolean,
-  gridSize: number,
+  ctx: CageConstraintContext,
   valueSetters: CellValueSetter[],
   candidateChanges: CellChange[]
 ): void {
+  const { cage, gridSize } = ctx;
   const cageValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
   if (cageValue === undefined || isNaN(cageValue)) {
     return;
   }
 
-  const tuples = collectCageTuples(cageValue, cage, hasOperators, gridSize);
+  const tuples = collectCageTuples(cageValue, ctx);
   if (tuples.length === 0) {
     return;
   }
@@ -68,17 +80,16 @@ export function buildAutoEliminateChanges(
 
 export function collectCageTuples(
   cageValue: number,
-  cage: Cage,
-  hasOperators: boolean,
-  gridSize: number
+  ctx: CageConstraintContext
 ): number[][] {
+  const { cage, gridSize, hasOperators } = ctx;
   if (hasOperators && cage.operator) {
-    return computeValidCageTuples(cageValue, cage.operator, cage.cells, gridSize);
+    return computeValidCageTuples({ cells: cage.cells, gridSize, operator: cage.operator, value: cageValue });
   }
   const tupleSet = new Set<string>();
   const tuples: number[][] = [];
   for (const op of ['+', '-', 'x', '/']) {
-    for (const t of computeValidCageTuples(cageValue, op, cage.cells, gridSize)) {
+    for (const t of computeValidCageTuples({ cells: cage.cells, gridSize, operator: op, value: cageValue })) {
       const key = t.join(',');
       if (!tupleSet.has(key)) {
         tupleSet.add(key);
@@ -89,12 +100,8 @@ export function collectCageTuples(
   return tuples;
 }
 
-export function computeValidCageTuples(
-  value: number,
-  operator: string,
-  cells: readonly Cell[],
-  gridSize: number
-): number[][] {
+export function computeValidCageTuples(options: CageTupleOptions): number[][] {
+  const { cells, gridSize, operator, value } = options;
   const tuples: number[][] = [];
   const numCells = cells.length;
 

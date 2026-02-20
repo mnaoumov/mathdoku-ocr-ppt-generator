@@ -27,12 +27,35 @@ export interface CellValueSetter {
 
 export type HouseType = 'column' | 'row';
 
+export interface InitPuzzleSlidesOptions {
+  readonly cages: readonly CageRaw[];
+  readonly hasOperators: boolean;
+  readonly initStrategies: readonly Strategy[];
+  readonly meta: string;
+  readonly renderer: PuzzleRenderer;
+  readonly rerunnableStrategies: readonly Strategy[];
+  readonly size: number;
+  readonly title: string;
+}
+
 export interface PuzzleJson {
   readonly cages: readonly CageRaw[];
   readonly hasOperators?: boolean;
   readonly meta?: string;
   readonly size: number;
   readonly title?: string;
+}
+
+export interface PuzzleOptions {
+  readonly cages: readonly CageRaw[];
+  readonly hasOperators: boolean;
+  readonly initialCandidates?: Map<string, Set<number>>;
+  readonly initialValues?: Map<string, number>;
+  readonly meta: string;
+  readonly renderer: PuzzleRenderer;
+  readonly size: number;
+  readonly strategies: readonly Strategy[];
+  readonly title: string;
 }
 
 export interface PuzzleRenderer {
@@ -216,21 +239,26 @@ export class Puzzle {
   public readonly cages: readonly Cage[];
   public readonly cells: readonly Cell[];
   public readonly columns: readonly House[];
+  public readonly hasOperators: boolean;
   public readonly houses: readonly House[];
-  public readonly rows: readonly House[];
-  private pendingChanges: readonly CellChange[] = [];
+  public readonly meta: string;
 
-  public constructor(
-    private readonly renderer: PuzzleRenderer,
-    public readonly size: number,
-    cagesRaw: readonly CageRaw[],
-    public readonly hasOperators: boolean,
-    public readonly title: string,
-    public readonly meta: string,
-    private readonly strategies: readonly Strategy[],
-    initialValues?: Map<string, number>,
-    initialCandidates?: Map<string, Set<number>>
-  ) {
+  public readonly rows: readonly House[];
+  public readonly size: number;
+  public readonly title: string;
+  private pendingChanges: readonly CellChange[] = [];
+  private readonly renderer: PuzzleRenderer;
+  private readonly strategies: readonly Strategy[];
+
+  public constructor(options: PuzzleOptions) {
+    const { cages: cagesRaw, hasOperators, initialCandidates, initialValues, meta, renderer, size, strategies, title } = options;
+    this.hasOperators = hasOperators;
+    this.meta = meta;
+    this.renderer = renderer;
+    this.size = size;
+    this.strategies = strategies;
+    this.title = title;
+
     const cellToCageIndex: Record<string, number> = {};
     for (let i = 0; i < cagesRaw.length; i++) {
       const cage = ensureNonNullable(cagesRaw[i]);
@@ -558,21 +586,20 @@ export class Puzzle {
   }
 }
 
-export function initPuzzleSlides(
-  renderer: PuzzleRenderer,
-  size: number,
-  cages: readonly CageRaw[],
-  hasOperators: boolean,
-  title: string,
-  meta: string,
-  initStrategies: readonly Strategy[],
-  rerunnableStrategies: readonly Strategy[]
-): Puzzle {
-  const puzzle = new Puzzle(renderer, size, cages, hasOperators, title, meta, rerunnableStrategies);
-  for (const strategy of initStrategies) {
+export function initPuzzleSlides(options: InitPuzzleSlidesOptions): Puzzle {
+  const puzzle = new Puzzle({
+    cages: options.cages,
+    hasOperators: options.hasOperators,
+    meta: options.meta,
+    renderer: options.renderer,
+    size: options.size,
+    strategies: options.rerunnableStrategies,
+    title: options.title
+  });
+  for (const strategy of options.initStrategies) {
     const result = strategy.tryApply(puzzle);
     if (result) {
-      renderer.setNoteText(result.note);
+      options.renderer.setNoteText(result.note);
       puzzle.applyChanges(result.changes);
       puzzle.commit();
     }

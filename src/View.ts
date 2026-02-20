@@ -41,6 +41,17 @@ interface CandidatesProfile {
   readonly widthFraction: number;
 }
 
+interface GridRenderContext {
+  readonly gridDimension: number;
+  readonly gridLeft: number;
+  readonly gridSize: number;
+  readonly gridTop: number;
+  readonly horizontalBounds: readonly (readonly boolean[])[];
+  readonly profile: LayoutProfile;
+  readonly slide: GoogleAppsScript.Slides.Slide;
+  readonly verticalBounds: readonly (readonly boolean[])[];
+}
+
 interface LayoutProfile {
   readonly axisFont: number;
   readonly axisLabelHeight: number;
@@ -186,11 +197,19 @@ export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): 
   const gridLeft = pt(in2pt(profile.gridLeftInches));
   const gridTop = pt(in2pt(profile.gridTopInches));
   const gridSize = pt(in2pt(profile.gridSizeInches));
-  const cellWidth = gridSize / gridDimension;
-  const thinPt = profile.thinPt;
-  const thickPt = profile.thickPt;
 
   const { horizontalBounds, verticalBounds } = computeGridBoundaries(cages, gridDimension);
+
+  const ctx: GridRenderContext = {
+    gridDimension,
+    gridLeft,
+    gridSize,
+    gridTop,
+    horizontalBounds,
+    profile,
+    slide,
+    verticalBounds
+  };
 
   // Title
   const titleLeft = pt(in2pt(TITLE_HORIZONTAL_MARGIN_INCHES / SIDE_COUNT));
@@ -208,15 +227,15 @@ export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): 
   titleRange.getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.CENTER);
 
   // Value + Candidates boxes
-  renderValueAndCandidateBoxes(slide, gridLeft, gridTop, cellWidth, gridDimension, profile);
+  renderValueAndCandidateBoxes(ctx);
 
   // Draw order
-  drawThinGrid(slide, gridLeft, gridTop, gridSize, gridDimension, thinPt, verticalBounds, horizontalBounds);
-  drawCageBoundaries(slide, gridLeft, gridTop, gridSize, gridDimension, thickPt, verticalBounds, horizontalBounds);
-  drawJoinSquares(slide, gridLeft, gridTop, gridSize, gridDimension, thickPt, verticalBounds, horizontalBounds);
-  drawOuterBorder(slide, gridLeft, gridTop, gridSize, thickPt);
-  drawAxisLabels(slide, gridLeft, gridTop, cellWidth, gridDimension, profile);
-  drawCageLabels(slide, gridLeft, gridTop, cellWidth, cages, hasOperators, profile);
+  drawThinGrid(ctx);
+  drawCageBoundaries(ctx);
+  drawJoinSquares(ctx);
+  drawOuterBorder(ctx);
+  drawAxisLabels(ctx);
+  drawCageLabels(ctx, cages, hasOperators);
 
   // Footer
   const footerLeft = pt(in2pt(TITLE_HORIZONTAL_MARGIN_INCHES));
@@ -229,14 +248,23 @@ export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): 
   footerBox.getText().getParagraphStyle().setParagraphAlignment(SlidesApp.ParagraphAlignment.END);
 
   // Solve notes columns
-  renderSolveNotesColumns(slide, gridTop, gridSize, profile);
+  renderSolveNotesColumns(ctx);
 
   // Post-scale
-  scaleIfNeeded(pres, slide, gridTop, gridSize, profile);
+  scaleIfNeeded(pres, ctx);
 
   // Init slides via Puzzle
   const renderer = new SlidesRenderer();
-  initPuzzleSlides(renderer, gridDimension, cages, hasOperators, title, meta, createInitialStrategies(), createRerunnableStrategies(gridDimension));
+  initPuzzleSlides({
+    cages,
+    hasOperators,
+    initStrategies: createInitialStrategies(),
+    meta,
+    renderer,
+    rerunnableStrategies: createRerunnableStrategies(gridDimension),
+    size: gridDimension,
+    title
+  });
 
   Logger.log(
     `Import complete: ${String(gridDimension)}x${String(gridDimension)} grid, pageW=${String(pres.getPageWidth())} pageH=${String(pres.getPageHeight())}`
@@ -400,17 +428,17 @@ function buildPuzzleFromSlide(): Puzzle {
     }
   }
 
-  return new Puzzle(
-    new SlidesRenderer(),
-    state.size,
-    state.cages,
-    state.hasOperators,
-    '',
-    '',
-    createRerunnableStrategies(state.size),
-    values,
-    candidates
-  );
+  return new Puzzle({
+    cages: state.cages,
+    hasOperators: state.hasOperators,
+    initialCandidates: candidates,
+    initialValues: values,
+    meta: '',
+    renderer: new SlidesRenderer(),
+    size: state.size,
+    strategies: createRerunnableStrategies(state.size),
+    title: ''
+  });
 }
 
 function clamp(value: number, lo: number, hi: number): number {
@@ -434,14 +462,9 @@ function colorToHex(color: GoogleAppsScript.Slides.Color): string {
   return color.asRgbColor().asHexString().toUpperCase();
 }
 
-function drawAxisLabels(
-  slide: GoogleAppsScript.Slides.Slide,
-  gridLeft: number,
-  gridTop: number,
-  cellWidth: number,
-  gridDimension: number,
-  profile: LayoutProfile
-): void {
+function drawAxisLabels(ctx: GridRenderContext): void {
+  const { gridDimension, gridLeft, gridTop, profile, slide } = ctx;
+  const cellWidth = ctx.gridSize / gridDimension;
   const axisFont = profile.axisFont;
   const labelHeight = pt(in2pt(profile.axisLabelHeight));
   const labelWidth = pt(in2pt(profile.axisLabelWidth));
@@ -472,16 +495,9 @@ function drawAxisLabels(
   }
 }
 
-function drawCageBoundaries(
-  slide: GoogleAppsScript.Slides.Slide,
-  gridLeft: number,
-  gridTop: number,
-  gridSize: number,
-  gridDimension: number,
-  thickPt: number,
-  verticalBounds: readonly (readonly boolean[])[],
-  horizontalBounds: readonly (readonly boolean[])[]
-): void {
+function drawCageBoundaries(ctx: GridRenderContext): void {
+  const { gridDimension, gridLeft, gridSize, gridTop, horizontalBounds, profile, slide, verticalBounds } = ctx;
+  const thickPt = profile.thickPt;
   const cellWidth = gridSize / gridDimension;
   const inset = thickPt / SIDE_COUNT;
 
@@ -536,15 +552,9 @@ function drawCageBoundaries(
   }
 }
 
-function drawCageLabels(
-  slide: GoogleAppsScript.Slides.Slide,
-  gridLeft: number,
-  gridTop: number,
-  cellWidth: number,
-  cages: readonly CageRaw[],
-  hasOperators: boolean,
-  profile: LayoutProfile
-): void {
+function drawCageLabels(ctx: GridRenderContext, cages: readonly CageRaw[], hasOperators: boolean): void {
+  const { gridDimension, gridLeft, gridTop, profile, slide } = ctx;
+  const cellWidth = ctx.gridSize / gridDimension;
   const cageProfile = profile.cage;
   const insetX = cageProfile.insetLeftFraction * cellWidth;
   const insetY = cageProfile.insetTopFraction * cellWidth;
@@ -581,16 +591,9 @@ function drawCageLabels(
   }
 }
 
-function drawJoinSquares(
-  slide: GoogleAppsScript.Slides.Slide,
-  gridLeft: number,
-  gridTop: number,
-  gridSize: number,
-  gridDimension: number,
-  thickPt: number,
-  verticalBounds: readonly (readonly boolean[])[],
-  horizontalBounds: readonly (readonly boolean[])[]
-): void {
+function drawJoinSquares(ctx: GridRenderContext): void {
+  const { gridDimension, gridLeft, gridSize, gridTop, horizontalBounds, profile, slide, verticalBounds } = ctx;
+  const thickPt = profile.thickPt;
   const cellWidth = gridSize / gridDimension;
 
   for (let vertexRow = 1; vertexRow < gridDimension; vertexRow++) {
@@ -611,13 +614,9 @@ function drawJoinSquares(
   }
 }
 
-function drawOuterBorder(
-  slide: GoogleAppsScript.Slides.Slide,
-  gridLeft: number,
-  gridTop: number,
-  gridSize: number,
-  thickPt: number
-): void {
+function drawOuterBorder(ctx: GridRenderContext): void {
+  const { gridLeft, gridSize, gridTop, profile, slide } = ctx;
+  const thickPt = profile.thickPt;
   const halfThick = thickPt / SIDE_COUNT;
   drawThickRect(slide, gridLeft - halfThick, gridTop - halfThick, gridSize + thickPt, thickPt);
   drawThickRect(slide, gridLeft - halfThick, gridTop + gridSize - halfThick, gridSize + thickPt, thickPt);
@@ -642,16 +641,9 @@ function drawThickRect(
   rect.getBorder().setTransparent();
 }
 
-function drawThinGrid(
-  slide: GoogleAppsScript.Slides.Slide,
-  gridLeft: number,
-  gridTop: number,
-  gridSize: number,
-  gridDimension: number,
-  thinWidth: number,
-  verticalBounds: readonly (readonly boolean[])[],
-  horizontalBounds: readonly (readonly boolean[])[]
-): void {
+function drawThinGrid(ctx: GridRenderContext): void {
+  const { gridDimension, gridLeft, gridSize, gridTop, horizontalBounds, profile, slide, verticalBounds } = ctx;
+  const thinWidth = profile.thinPt;
   const cellWidth = gridSize / gridDimension;
   const halfThinWidth = thinWidth / SIDE_COUNT;
 
@@ -936,12 +928,8 @@ function readCellFromSlide(
   }
 }
 
-function renderSolveNotesColumns(
-  slide: GoogleAppsScript.Slides.Slide,
-  gridTop: number,
-  gridSize: number,
-  profile: LayoutProfile
-): void {
+function renderSolveNotesColumns(ctx: GridRenderContext): void {
+  const { gridSize, gridTop, profile, slide } = ctx;
   const solveProfile = profile.solve;
   const notesLeft = in2pt(solveProfile.leftInches);
   const columnWidth = in2pt(solveProfile.columnWidthInches);
@@ -958,14 +946,9 @@ function renderSolveNotesColumns(
   }
 }
 
-function renderValueAndCandidateBoxes(
-  slide: GoogleAppsScript.Slides.Slide,
-  gridLeft: number,
-  gridTop: number,
-  cellWidth: number,
-  gridDimension: number,
-  profile: LayoutProfile
-): void {
+function renderValueAndCandidateBoxes(ctx: GridRenderContext): void {
+  const { gridDimension, gridLeft, gridTop, profile, slide } = ctx;
+  const cellWidth = ctx.gridSize / gridDimension;
   const valueProfile = profile.value;
   const candidatesProfile = profile.candidates;
 
@@ -1004,13 +987,8 @@ function renderValueAndCandidateBoxes(
   }
 }
 
-function scaleIfNeeded(
-  pres: GoogleAppsScript.Slides.Presentation,
-  slide: GoogleAppsScript.Slides.Slide,
-  gridTop: number,
-  gridSize: number,
-  profile: LayoutProfile
-): void {
+function scaleIfNeeded(pres: GoogleAppsScript.Slides.Presentation, ctx: GridRenderContext): void {
+  const { gridSize, gridTop, profile, slide } = ctx;
   const pageWidth = pres.getPageWidth();
   const pageHeight = pres.getPageHeight();
   const solveProfile = profile.solve;

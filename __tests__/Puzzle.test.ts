@@ -386,7 +386,16 @@ describe('slide notes tracking', () => {
 describe('initPuzzleSlides notes', () => {
   it('first strategy note is Filling all candidates', () => {
     const renderer = new TrackingRenderer();
-    initPuzzleSlides(renderer, 4, SIZE_4_CAGES, true, '', '', createInitialStrategies(), createRerunnableStrategies(4));
+    initPuzzleSlides({
+      cages: SIZE_4_CAGES,
+      hasOperators: true,
+      initStrategies: createInitialStrategies(),
+      meta: '',
+      renderer,
+      rerunnableStrategies: createRerunnableStrategies(4),
+      size: 4,
+      title: ''
+    });
 
     expect(renderer.notesBySlide[0]).toBe('Filling all candidates');
     expect(renderer.notesBySlide[1]).toBe('Filling all candidates');
@@ -394,7 +403,16 @@ describe('initPuzzleSlides notes', () => {
 
   it('produces at least 3 slides when init strategies apply', () => {
     const renderer = new TrackingRenderer();
-    initPuzzleSlides(renderer, 4, SIZE_4_CAGES, true, '', '', createInitialStrategies(), createRerunnableStrategies(4));
+    initPuzzleSlides({
+      cages: SIZE_4_CAGES,
+      hasOperators: true,
+      initStrategies: createInitialStrategies(),
+      meta: '',
+      renderer,
+      rerunnableStrategies: createRerunnableStrategies(4),
+      size: 4,
+      title: ''
+    });
 
     // At least FillAllCandidates fires → 1 initial + 1×2 = 3 slides minimum
     expect(renderer.slideCount).toBeGreaterThanOrEqual(3);
@@ -406,7 +424,16 @@ describe('initPuzzleSlides notes', () => {
       { cells: ['A2', 'B2'] }
     ];
     const renderer = new TrackingRenderer();
-    initPuzzleSlides(renderer, 2, cages, false, '', '', createInitialStrategies(), createRerunnableStrategies(2));
+    initPuzzleSlides({
+      cages,
+      hasOperators: false,
+      initStrategies: createInitialStrategies(),
+      meta: '',
+      renderer,
+      rerunnableStrategies: createRerunnableStrategies(2),
+      size: 2,
+      title: ''
+    });
 
     expect(renderer.slideCount).toBe(3);
     expect(renderer.notesBySlide[0]).toBe('Filling all candidates');

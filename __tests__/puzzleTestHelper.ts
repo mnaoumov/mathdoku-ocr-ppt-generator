@@ -68,16 +68,15 @@ export class TrackingRenderer implements PuzzleRenderer {
 }
 
 export function createTestPuzzle(options: CreateTestPuzzleOptions): Puzzle {
-  const renderer = options.renderer ?? new TrackingRenderer();
-  return new Puzzle(
-    renderer,
-    options.size,
-    options.cages,
-    options.hasOperators,
-    'Test Puzzle',
-    'test',
-    options.strategies ?? [],
-    options.initialValues,
-    options.initialCandidates
-  );
+  return new Puzzle({
+    cages: options.cages,
+    hasOperators: options.hasOperators,
+    meta: 'test',
+    renderer: options.renderer ?? new TrackingRenderer(),
+    size: options.size,
+    strategies: options.strategies ?? [],
+    title: 'Test Puzzle',
+    ...options.initialCandidates !== undefined && { initialCandidates: options.initialCandidates },
+    ...options.initialValues !== undefined && { initialValues: options.initialValues }
+  });
 }
