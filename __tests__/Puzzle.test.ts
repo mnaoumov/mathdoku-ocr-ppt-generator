@@ -212,6 +212,35 @@ describe('tryApplyAutomatedStrategies', () => {
   });
 });
 
+describe('ensureLastSlide guard', () => {
+  const SIZE_2_CAGES = [
+    { cells: ['A1', 'B1'], operator: '+', value: 3 },
+    { cells: ['A2', 'B2'], operator: '+', value: 3 }
+  ];
+
+  it('enter does nothing when not on last slide', () => {
+    const renderer = new TrackingRenderer();
+    renderer.isLastSlide = false;
+    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, undefined, renderer);
+    puzzle.enter('A1:12');
+    expect(puzzle.getCell('A1').getCandidates()).toEqual([]);
+    expect(renderer.slideCount).toBe(1);
+  });
+
+  it('tryApplyAutomatedStrategies returns false when not on last slide', () => {
+    const renderer = new TrackingRenderer();
+    renderer.isLastSlide = false;
+    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2), renderer);
+    puzzle.getCell('A1').setCandidates([1]);
+    puzzle.getCell('B1').setCandidates([1, 2]);
+    puzzle.getCell('A2').setCandidates([1, 2]);
+    puzzle.getCell('B2').setCandidates([1, 2]);
+
+    expect(puzzle.tryApplyAutomatedStrategies()).toBe(false);
+    expect(puzzle.getCell('A1').value).toBeNull();
+  });
+});
+
 describe('slide notes tracking', () => {
   const SIZE_2_CAGES = [
     { cells: ['A1', 'B1'], operator: '+', value: 3 },

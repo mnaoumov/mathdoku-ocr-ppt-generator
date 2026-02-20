@@ -37,6 +37,7 @@ export interface PuzzleJson {
 
 export interface PuzzleRenderer {
   beginPendingRender(gridSize: number): void;
+  ensureLastSlide(): boolean;
   renderCommittedChanges(gridSize: number): void;
   renderPendingCandidates(change: CandidatesChange): void;
   renderPendingClearance(change: CellClearance): void;
@@ -316,6 +317,9 @@ export class Puzzle {
   }
 
   public enter(input: string): void {
+    if (!this.renderer.ensureLastSlide()) {
+      return;
+    }
     this.renderer.setNoteText(input);
     const changes = this.buildEnterChanges(input);
     this.applyChanges(changes);
@@ -344,6 +348,9 @@ export class Puzzle {
   }
 
   public tryApplyAutomatedStrategies(): boolean {
+    if (!this.renderer.ensureLastSlide()) {
+      return false;
+    }
     this.renderer.setNoteText(AUTOMATED_STRATEGIES_NOTE);
     let applied = false;
     let canApply = true;

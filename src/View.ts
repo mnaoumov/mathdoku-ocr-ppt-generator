@@ -83,6 +83,10 @@ class SlidesRenderer implements PuzzleRenderer {
     this.currentGridSize = gridSize;
   }
 
+  public ensureLastSlide(): boolean {
+    return ensureLastSlideSelected();
+  }
+
   public renderCommittedChanges(gridSize: number): void {
     makeNextSlide(gridSize, this.noteText);
     this.currentSlide = null;
@@ -118,6 +122,9 @@ export function addChanges(): void {
   try {
     if (PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') !== 'true') {
       SlidesApp.getUi().alert('Please run Mathdoku > Init first.');
+      return;
+    }
+    if (!ensureLastSlideSelected()) {
       return;
     }
     const html = HtmlService.createHtmlOutputFromFile('EnterDialog')
@@ -670,6 +677,21 @@ function drawThinGrid(
       rect.getBorder().setTransparent();
     }
   }
+}
+
+function ensureLastSlideSelected(): boolean {
+  const pres = SlidesApp.getActivePresentation();
+  const slides = pres.getSlides();
+  const lastSlide = slides[slides.length - 1];
+  if (!lastSlide) {
+    throw new Error('Presentation has no slides');
+  }
+  const currentSlide = getCurrentSlide();
+  if (currentSlide.getObjectId() !== lastSlide.getObjectId()) {
+    SlidesApp.getUi().alert('Please navigate to the last slide before making changes.');
+    return false;
+  }
+  return true;
 }
 
 function finalizeCandidatesShape(shape: GoogleAppsScript.Slides.Shape, gridSize: number): void {

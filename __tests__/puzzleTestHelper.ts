@@ -7,6 +7,7 @@ import type { Strategy } from '../src/strategies/Strategy.ts';
 import { Puzzle } from '../src/Puzzle.ts';
 
 export class TrackingRenderer implements PuzzleRenderer {
+  public isLastSlide = true;
   public readonly notesBySlide: string[] = [];
   public get slideCount(): number {
     return this.currentSlide + 1;
@@ -18,6 +19,10 @@ export class TrackingRenderer implements PuzzleRenderer {
 
   public beginPendingRender(): void {
     this.recordNote();
+  }
+
+  public ensureLastSlide(): boolean {
+    return this.isLastSlide;
   }
 
   public renderCommittedChanges(): void {
