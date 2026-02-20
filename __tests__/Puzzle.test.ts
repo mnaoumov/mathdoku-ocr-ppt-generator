@@ -123,6 +123,29 @@ describe('Puzzle', () => {
       expect(puzzle.getCell('A1').getCandidates()).toEqual([]);
     });
 
+    it('strips comment and executes command', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      puzzle.enter('A1:123 // setting candidates');
+      puzzle.commit();
+      expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2, 3]);
+    });
+
+    it('includes comment in note text', () => {
+      const renderer = new TrackingRenderer();
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true, undefined, undefined, undefined, renderer);
+      puzzle.enter('A1:123 // setting candidates');
+      puzzle.commit();
+      const noted = renderer.notesBySlide.filter((n) => n === 'A1:123 // setting candidates');
+      expect(noted).toHaveLength(2);
+    });
+
+    it('throws for comment-only input', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      expect(() => {
+        puzzle.enter('// just a comment');
+      }).toThrow('No commands specified');
+    });
+
     it('throws for empty input', () => {
       const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
       expect(() => {

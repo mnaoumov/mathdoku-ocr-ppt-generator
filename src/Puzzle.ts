@@ -321,7 +321,9 @@ export class Puzzle {
       return;
     }
     this.renderer.setNoteText(input);
-    const changes = this.buildEnterChanges(input);
+    const commentIndex = input.indexOf('//');
+    const commandPart = commentIndex >= 0 ? input.substring(0, commentIndex) : input;
+    const changes = this.buildEnterChanges(commandPart);
     this.applyChanges(changes);
   }
 
