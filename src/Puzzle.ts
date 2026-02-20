@@ -30,12 +30,12 @@ export type HouseType = 'column' | 'row';
 export interface InitPuzzleSlidesOptions {
   readonly cages: readonly CageRaw[];
   readonly hasOperators: boolean;
-  readonly initStrategies: readonly Strategy[];
-  readonly meta: string;
+  readonly initialStrategies: readonly Strategy[];
+  readonly meta?: string;
   readonly renderer: PuzzleRenderer;
-  readonly rerunnableStrategies: readonly Strategy[];
   readonly size: number;
-  readonly title: string;
+  readonly strategies: readonly Strategy[];
+  readonly title?: string;
 }
 
 export interface PuzzleJson {
@@ -51,11 +51,11 @@ export interface PuzzleOptions {
   readonly hasOperators: boolean;
   readonly initialCandidates?: Map<string, Set<number>>;
   readonly initialValues?: Map<string, number>;
-  readonly meta: string;
+  readonly meta?: string;
   readonly renderer: PuzzleRenderer;
   readonly size: number;
   readonly strategies: readonly Strategy[];
-  readonly title: string;
+  readonly title?: string;
 }
 
 export interface PuzzleRenderer {
@@ -251,7 +251,7 @@ export class Puzzle {
   private readonly strategies: readonly Strategy[];
 
   public constructor(options: PuzzleOptions) {
-    const { cages: cagesRaw, hasOperators, initialCandidates, initialValues, meta, renderer, size, strategies, title } = options;
+    const { cages: cagesRaw, hasOperators, initialCandidates, initialValues, meta = '', renderer, size, strategies, title = '' } = options;
     this.hasOperators = hasOperators;
     this.meta = meta;
     this.renderer = renderer;
@@ -590,13 +590,13 @@ export function initPuzzleSlides(options: InitPuzzleSlidesOptions): Puzzle {
   const puzzle = new Puzzle({
     cages: options.cages,
     hasOperators: options.hasOperators,
-    meta: options.meta,
+    meta: options.meta ?? '',
     renderer: options.renderer,
     size: options.size,
-    strategies: options.rerunnableStrategies,
-    title: options.title
+    strategies: options.strategies,
+    title: options.title ?? ''
   });
-  for (const strategy of options.initStrategies) {
+  for (const strategy of options.initialStrategies) {
     const result = strategy.tryApply(puzzle);
     if (result) {
       options.renderer.setNoteText(result.note);
@@ -604,6 +604,7 @@ export function initPuzzleSlides(options: InitPuzzleSlidesOptions): Puzzle {
       puzzle.commit();
     }
   }
+  puzzle.tryApplyAutomatedStrategies();
   return puzzle;
 }
 

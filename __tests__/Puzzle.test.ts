@@ -11,7 +11,7 @@ import { ValueChange } from '../src/cellChanges/ValueChange.ts';
 import { initPuzzleSlides } from '../src/Puzzle.ts';
 import {
   createInitialStrategies,
-  createRerunnableStrategies
+  createStrategies
 } from '../src/strategies/createDefaultStrategies.ts';
 import {
   createTestPuzzle,
@@ -266,7 +266,7 @@ describe('tryApplyAutomatedStrategies', () => {
   ];
 
   it('returns false when no strategies apply', () => {
-    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createRerunnableStrategies(2) });
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createStrategies(2) });
     for (const cell of puzzle.cells) {
       cell.setCandidates([1, 2]);
     }
@@ -274,7 +274,7 @@ describe('tryApplyAutomatedStrategies', () => {
   });
 
   it('applies single candidate strategy and returns true', () => {
-    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createRerunnableStrategies(2) });
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createStrategies(2) });
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([1, 2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -285,7 +285,7 @@ describe('tryApplyAutomatedStrategies', () => {
   });
 
   it('chains multiple strategy steps until no more apply', () => {
-    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createRerunnableStrategies(2) });
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createStrategies(2) });
     // A1 has single candidate → solved → peers lose that candidate → chain
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([2]);
@@ -318,7 +318,7 @@ describe('ensureLastSlide guard', () => {
   it('tryApplyAutomatedStrategies returns false when not on last slide', () => {
     const renderer = new TrackingRenderer();
     renderer.isLastSlide = false;
-    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2, strategies: createRerunnableStrategies(2) });
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2, strategies: createStrategies(2) });
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([1, 2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -353,7 +353,7 @@ describe('slide notes tracking', () => {
 
   it('records strategy-specific note for each strategy step', () => {
     const renderer = new TrackingRenderer();
-    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2, strategies: createRerunnableStrategies(2) });
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2, strategies: createStrategies(2) });
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -389,12 +389,10 @@ describe('initPuzzleSlides notes', () => {
     initPuzzleSlides({
       cages: SIZE_4_CAGES,
       hasOperators: true,
-      initStrategies: createInitialStrategies(),
-      meta: '',
+      initialStrategies: createInitialStrategies(),
       renderer,
-      rerunnableStrategies: createRerunnableStrategies(4),
       size: 4,
-      title: ''
+      strategies: createStrategies(4)
     });
 
     expect(renderer.notesBySlide[0]).toBe('Filling all candidates');
@@ -406,12 +404,10 @@ describe('initPuzzleSlides notes', () => {
     initPuzzleSlides({
       cages: SIZE_4_CAGES,
       hasOperators: true,
-      initStrategies: createInitialStrategies(),
-      meta: '',
+      initialStrategies: createInitialStrategies(),
       renderer,
-      rerunnableStrategies: createRerunnableStrategies(4),
       size: 4,
-      title: ''
+      strategies: createStrategies(4)
     });
 
     // At least FillAllCandidates fires → 1 initial + 1×2 = 3 slides minimum
@@ -427,12 +423,10 @@ describe('initPuzzleSlides notes', () => {
     initPuzzleSlides({
       cages,
       hasOperators: false,
-      initStrategies: createInitialStrategies(),
-      meta: '',
+      initialStrategies: createInitialStrategies(),
       renderer,
-      rerunnableStrategies: createRerunnableStrategies(2),
       size: 2,
-      title: ''
+      strategies: createStrategies(2)
     });
 
     expect(renderer.slideCount).toBe(3);

@@ -20,7 +20,7 @@ export function createInitialStrategies(): Strategy[] {
   ];
 }
 
-export function createRerunnableStrategies(size: number): Strategy[] {
+export function createStrategies(size: number): Strategy[] {
   return [
     new SingleCandidateStrategy(),
     new HiddenSingleStrategy(),

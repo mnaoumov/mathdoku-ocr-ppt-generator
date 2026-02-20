@@ -20,7 +20,7 @@ import {
 } from './Puzzle.ts';
 import {
   createInitialStrategies,
-  createRerunnableStrategies
+  createStrategies
 } from './strategies/createDefaultStrategies.ts';
 import { ensureNonNullable } from './typeGuards.ts';
 
@@ -154,6 +154,7 @@ export function addChangesFromInput(input: string): void {
   const puzzle = buildPuzzleFromSlide();
   puzzle.enter(input);
   puzzle.commit();
+  puzzle.tryApplyAutomatedStrategies();
 }
 
 export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
@@ -258,11 +259,11 @@ export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): 
   initPuzzleSlides({
     cages,
     hasOperators,
-    initStrategies: createInitialStrategies(),
+    initialStrategies: createInitialStrategies(),
     meta,
     renderer,
-    rerunnableStrategies: createRerunnableStrategies(gridDimension),
     size: gridDimension,
+    strategies: createStrategies(gridDimension),
     title
   });
 
@@ -322,27 +323,11 @@ export function onOpen(): void {
   addMathdokuMenu();
 }
 
-export function tryApplyAutomatedStrategies(): void {
-  try {
-    const applied = addChangesFromStrategies();
-    if (!applied) {
-      SlidesApp.getUi().alert('No applicable automated strategy found');
-    }
-  } catch (e: unknown) {
-    showError('Apply automated strategies', e);
-  }
-}
-
-function addChangesFromStrategies(): boolean {
-  return buildPuzzleFromSlide().tryApplyAutomatedStrategies();
-}
-
 function addMathdokuMenu(): void {
   const menu = SlidesApp.getUi().createMenu('Mathdoku');
   const initialized = PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') === 'true';
   if (initialized) {
     menu.addItem('Add changes', 'addChanges');
-    menu.addItem('Apply automated strategies', 'tryApplyAutomatedStrategies');
   } else {
     menu.addItem('Init', 'init');
   }
@@ -433,11 +418,9 @@ function buildPuzzleFromSlide(): Puzzle {
     hasOperators: state.hasOperators,
     initialCandidates: candidates,
     initialValues: values,
-    meta: '',
     renderer: new SlidesRenderer(),
     size: state.size,
-    strategies: createRerunnableStrategies(state.size),
-    title: ''
+    strategies: createStrategies(state.size)
   });
 }
 

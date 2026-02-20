@@ -42,7 +42,6 @@
     "modeless",
     "multicell",
     "multiset",
-    "multisets",
-    "rerunnable"
+    "multisets"
   ]
 }
