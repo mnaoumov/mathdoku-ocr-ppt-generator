@@ -8,8 +8,13 @@ import { CandidatesChange } from '../src/cellChanges/CandidatesChange.ts';
 import { CandidatesStrikethrough } from '../src/cellChanges/CandidatesStrikethrough.ts';
 import { CellClearance } from '../src/cellChanges/CellClearance.ts';
 import { ValueChange } from '../src/cellChanges/ValueChange.ts';
+import { initPuzzleSlides } from '../src/Puzzle.ts';
+import { createDefaultStrategies } from '../src/strategies/createDefaultStrategies.ts';
 import { ensureNonNullable } from '../src/typeGuards.ts';
-import { createTestPuzzle } from './puzzleTestHelper.ts';
+import {
+  createTestPuzzle,
+  TrackingRenderer
+} from './puzzleTestHelper.ts';
 
 const SIZE_4_CAGES = [
   { cells: ['A1', 'A2'], operator: '+', value: 3 },
@@ -63,10 +68,10 @@ describe('Puzzle', () => {
   });
 
   describe('buildInitChanges', () => {
-    it('returns at least one batch of candidate changes', () => {
+    it('returns two batches: all candidates then cage constraints', () => {
       const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
       const batches = puzzle.buildInitChanges();
-      expect(batches.length).toBeGreaterThanOrEqual(1);
+      expect(batches).toHaveLength(2);
       // First batch: all cells get all candidates
       const firstBatch = ensureNonNullable(batches[0]);
       expect(firstBatch).toHaveLength(16);
@@ -163,6 +168,134 @@ describe('Cell', () => {
     const cell = puzzle.getCell('B2');
     // Row 2: A2, C2, D2 (3 peers) + Column B: B1, B3, B4 (3 peers) = 6
     expect(cell.peers).toHaveLength(6);
+  });
+});
+
+describe('tryApplyAutomatedStrategies', () => {
+  const SIZE_2_CAGES = [
+    { cells: ['A1', 'B1'], operator: '+', value: 3 },
+    { cells: ['A2', 'B2'], operator: '+', value: 3 }
+  ];
+
+  it('returns false when no strategies apply', () => {
+    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2));
+    for (const cell of puzzle.cells) {
+      cell.setCandidates([1, 2]);
+    }
+    expect(puzzle.tryApplyAutomatedStrategies()).toBe(false);
+  });
+
+  it('applies single candidate strategy and returns true', () => {
+    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2));
+    puzzle.getCell('A1').setCandidates([1]);
+    puzzle.getCell('B1').setCandidates([1, 2]);
+    puzzle.getCell('A2').setCandidates([1, 2]);
+    puzzle.getCell('B2').setCandidates([1, 2]);
+
+    expect(puzzle.tryApplyAutomatedStrategies()).toBe(true);
+    expect(puzzle.getCell('A1').value).toBe(1);
+  });
+
+  it('chains multiple strategy steps until no more apply', () => {
+    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2));
+    // A1 has single candidate → solved → peers lose that candidate → chain
+    puzzle.getCell('A1').setCandidates([1]);
+    puzzle.getCell('B1').setCandidates([2]);
+    puzzle.getCell('A2').setCandidates([1, 2]);
+    puzzle.getCell('B2').setCandidates([1, 2]);
+
+    puzzle.tryApplyAutomatedStrategies();
+    // All cells should be solved
+    for (const cell of puzzle.cells) {
+      expect(cell.isSolved).toBe(true);
+    }
+  });
+});
+
+describe('slide notes tracking', () => {
+  const SIZE_2_CAGES = [
+    { cells: ['A1', 'B1'], operator: '+', value: 3 },
+    { cells: ['A2', 'B2'], operator: '+', value: 3 }
+  ];
+
+  it('records note text on both pending and committed slides for enter+commit', () => {
+    const renderer = new TrackingRenderer();
+    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, undefined, renderer);
+    // Init candidates
+    const batches = puzzle.buildInitChanges();
+    for (const batch of batches) {
+      puzzle.applyChanges(batch);
+      puzzle.commit();
+    }
+
+    puzzle.enter('A1:=1');
+    puzzle.commit();
+
+    // Both the pending slide and committed slide should have the note
+    const notedSlides = renderer.notesBySlide.filter((n) => n === 'A1:=1');
+    expect(notedSlides).toHaveLength(2);
+  });
+
+  it('records note text for each strategy step', () => {
+    const renderer = new TrackingRenderer();
+    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2), renderer);
+    puzzle.getCell('A1').setCandidates([1]);
+    puzzle.getCell('B1').setCandidates([2]);
+    puzzle.getCell('A2').setCandidates([1, 2]);
+    puzzle.getCell('B2').setCandidates([1, 2]);
+
+    puzzle.tryApplyAutomatedStrategies();
+
+    // 2 strategy steps (A1+B1 then A2+B2), each producing 2 slides (pending + committed)
+    const notedSlides = renderer.notesBySlide.filter((n) => n === 'Applying automated strategies');
+    expect(notedSlides).toHaveLength(4);
+  });
+
+  it('records different notes for different operations', () => {
+    const renderer = new TrackingRenderer();
+    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, undefined, renderer);
+
+    puzzle.enter('A1:12');
+    puzzle.commit();
+
+    puzzle.enter('B1:12');
+    puzzle.commit();
+
+    const batch1Notes = renderer.notesBySlide.filter((n) => n === 'A1:12');
+    const batch2Notes = renderer.notesBySlide.filter((n) => n === 'B1:12');
+    expect(batch1Notes).toHaveLength(2);
+    expect(batch2Notes).toHaveLength(2);
+  });
+});
+
+describe('initPuzzleSlides notes', () => {
+  const BATCH_1_NOTE = 'Filling all possible cell candidates';
+  const BATCH_2_NOTE = 'Filling single cell values and unique cage multisets';
+
+  it('produces 5 slides with notes on slides 1-4 when cage constraints exist', () => {
+    const renderer = new TrackingRenderer();
+    initPuzzleSlides(renderer, 4, SIZE_4_CAGES, true, '', '', []);
+
+    expect(renderer.slideCount).toBe(5);
+    expect(renderer.notesBySlide[0]).toBe(BATCH_1_NOTE);
+    expect(renderer.notesBySlide[1]).toBe(BATCH_1_NOTE);
+    expect(renderer.notesBySlide[2]).toBe(BATCH_2_NOTE);
+    expect(renderer.notesBySlide[3]).toBe(BATCH_2_NOTE);
+    expect(renderer.notesBySlide[4]).toBeUndefined();
+  });
+
+  it('produces 3 slides with notes on slides 1-2 when no cage constraints exist', () => {
+    const cages = [
+      { cells: ['A1', 'B1'] },
+      { cells: ['A2', 'B2'] }
+    ];
+    const renderer = new TrackingRenderer();
+    initPuzzleSlides(renderer, 2, cages, false, '', '', []);
+
+    expect(renderer.slideCount).toBe(3);
+    expect(renderer.notesBySlide[0]).toBe(BATCH_1_NOTE);
+    expect(renderer.notesBySlide[1]).toBe(BATCH_1_NOTE);
+    expect(renderer.notesBySlide[2]).toBeUndefined();
   });
 });
 

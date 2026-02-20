@@ -42,6 +42,7 @@ export interface PuzzleRenderer {
   renderPendingClearance(change: CellClearance): void;
   renderPendingStrikethrough(change: CandidatesStrikethrough): void;
   renderPendingValue(change: ValueChange): void;
+  setNoteText(text: string): void;
 }
 
 export interface PuzzleState {
@@ -291,25 +292,6 @@ export class Puzzle {
     }
   }
 
-  public applyEasyStrategies(): number {
-    let totalSteps = 0;
-    let canApply = true;
-    while (canApply) {
-      canApply = false;
-      for (const strategy of this.strategies) {
-        const result = strategy.tryApply(this);
-        if (result) {
-          this.applyChanges(result);
-          this.commit();
-          totalSteps++;
-          canApply = true;
-          break;
-        }
-      }
-    }
-    return totalSteps;
-  }
-
   public buildInitChanges(): CellChange[][] {
     const batches: CellChange[][] = [];
     const allValues = Array.from({ length: this.size }, (_, i) => i + 1);
@@ -334,6 +316,7 @@ export class Puzzle {
   }
 
   public enter(input: string): void {
+    this.renderer.setNoteText(input);
     const changes = this.buildEnterChanges(input);
     this.applyChanges(changes);
   }
@@ -358,6 +341,26 @@ export class Puzzle {
 
   public getRow(id: number): House {
     return ensureNonNullable(this.rows[id - 1]);
+  }
+
+  public tryApplyAutomatedStrategies(): boolean {
+    this.renderer.setNoteText(AUTOMATED_STRATEGIES_NOTE);
+    let applied = false;
+    let canApply = true;
+    while (canApply) {
+      canApply = false;
+      for (const strategy of this.strategies) {
+        const result = strategy.tryApply(this);
+        if (result) {
+          this.applyChanges(result);
+          this.commit();
+          applied = true;
+          canApply = true;
+          break;
+        }
+      }
+    }
+    return applied;
   }
 
   private buildEnterChanges(input: string): CellChange[] {
@@ -451,6 +454,30 @@ export class Puzzle {
     return commands;
   }
 }
+
+export function initPuzzleSlides(
+  renderer: PuzzleRenderer,
+  size: number,
+  cages: readonly CageRaw[],
+  hasOperators: boolean,
+  title: string,
+  meta: string,
+  strategies: readonly Strategy[]
+): Puzzle {
+  const puzzle = new Puzzle(renderer, size, cages, hasOperators, title, meta, strategies);
+  const batches = puzzle.buildInitChanges();
+  const batchNotes = [INIT_CANDIDATES_NOTE, INIT_CAGE_CONSTRAINTS_NOTE];
+  for (let i = 0; i < batches.length; i++) {
+    renderer.setNoteText(batchNotes[i] ?? '');
+    puzzle.applyChanges(ensureNonNullable(batches[i]));
+    puzzle.commit();
+  }
+  return puzzle;
+}
+
+const AUTOMATED_STRATEGIES_NOTE = 'Applying automated strategies';
+const INIT_CAGE_CONSTRAINTS_NOTE = 'Filling single cell values and unique cage multisets';
+const INIT_CANDIDATES_NOTE = 'Filling all possible cell candidates';
 
 // Re-export parseCellRef for use outside
 import { parseCellRef } from './parsers.ts';

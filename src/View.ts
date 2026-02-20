@@ -14,7 +14,10 @@ import {
   cellRefA1,
   parseCellRef
 } from './parsers.ts';
-import { Puzzle } from './Puzzle.ts';
+import {
+  initPuzzleSlides,
+  Puzzle
+} from './Puzzle.ts';
 import { createDefaultStrategies } from './strategies/createDefaultStrategies.ts';
 import { ensureNonNullable } from './typeGuards.ts';
 
@@ -72,15 +75,16 @@ interface ValueProfile {
 class SlidesRenderer implements PuzzleRenderer {
   private currentGridSize = 0;
   private currentSlide: GoogleAppsScript.Slides.Slide | null = null;
+  private noteText = '';
 
   public beginPendingRender(gridSize: number): void {
-    makeNextSlide(gridSize);
+    makeNextSlide(gridSize, this.noteText);
     this.currentSlide = getCurrentSlide();
     this.currentGridSize = gridSize;
   }
 
   public renderCommittedChanges(gridSize: number): void {
-    makeNextSlide(gridSize);
+    makeNextSlide(gridSize, this.noteText);
     this.currentSlide = null;
   }
 
@@ -104,6 +108,10 @@ class SlidesRenderer implements PuzzleRenderer {
     const slide = ensureNonNullable(this.currentSlide);
     applyPendingValue(slide, change.cell.ref, String(change.value));
   }
+
+  public setNoteText(text: string): void {
+    this.noteText = text;
+  }
 }
 
 export function addChanges(): void {
@@ -125,17 +133,6 @@ export function addChangesFromInput(input: string): void {
   const puzzle = buildPuzzleFromSlide();
   puzzle.enter(input);
   puzzle.commit();
-}
-
-export function applyEasyStrategies(): void {
-  try {
-    const steps = addChangesFromStrategies();
-    if (steps === 0) {
-      SlidesApp.getUi().alert('No further solving steps found.');
-    }
-  } catch (e: unknown) {
-    showError('Apply easy strategies', e);
-  }
 }
 
 export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
@@ -229,12 +226,7 @@ export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): 
 
   // Init slides via Puzzle
   const renderer = new SlidesRenderer();
-  const puzzleObj = new Puzzle(renderer, gridDimension, cages, hasOperators, title, meta, createDefaultStrategies(gridDimension));
-  const initBatches = puzzleObj.buildInitChanges();
-  for (const batch of initBatches) {
-    puzzleObj.applyChanges(batch);
-    puzzleObj.commit();
-  }
+  initPuzzleSlides(renderer, gridDimension, cages, hasOperators, title, meta, createDefaultStrategies(gridDimension));
 
   Logger.log(
     `Import complete: ${String(gridDimension)}x${String(gridDimension)} grid, pageW=${String(pres.getPageWidth())} pageH=${String(pres.getPageHeight())}`
@@ -292,9 +284,19 @@ export function onOpen(): void {
   addMathdokuMenu();
 }
 
-function addChangesFromStrategies(): number {
-  const puzzle = buildPuzzleFromSlide();
-  return puzzle.applyEasyStrategies();
+export function tryApplyAutomatedStrategies(): void {
+  try {
+    const applied = addChangesFromStrategies();
+    if (!applied) {
+      SlidesApp.getUi().alert('No applicable automated strategy found');
+    }
+  } catch (e: unknown) {
+    showError('Apply automated strategies', e);
+  }
+}
+
+function addChangesFromStrategies(): boolean {
+  return buildPuzzleFromSlide().tryApplyAutomatedStrategies();
 }
 
 function addMathdokuMenu(): void {
@@ -302,7 +304,7 @@ function addMathdokuMenu(): void {
   const initialized = PropertiesService.getDocumentProperties().getProperty('mathdokuInitialized') === 'true';
   if (initialized) {
     menu.addItem('Add changes', 'addChanges');
-    menu.addItem('Apply easy strategies', 'applyEasyStrategies');
+    menu.addItem('Apply automated strategies', 'tryApplyAutomatedStrategies');
   } else {
     menu.addItem('Init', 'init');
   }
@@ -412,6 +414,10 @@ function clearShapeText(slide: GoogleAppsScript.Slides.Slide, title: string): vo
       shape.getText().setText(' ');
     } catch { /* Shape may not support text */ }
   }
+}
+
+function clearSlideNotes(slide: GoogleAppsScript.Slides.Slide): void {
+  slide.getNotesPage().getSpeakerNotesShape().getText().setText('');
 }
 
 function colorToHex(color: GoogleAppsScript.Slides.Color): string {
@@ -818,9 +824,14 @@ function isColorEqual(color: GoogleAppsScript.Slides.Color, hex: string): boolea
   return colorToHex(color) === hex.toUpperCase();
 }
 
-function makeNextSlide(gridSize: number): void {
+function makeNextSlide(gridSize: number, noteText = ''): void {
   const slide = getCurrentSlide();
+  if (noteText) {
+    setSlideNotes(slide, noteText);
+  }
+
   const newSlide = slide.duplicate();
+  clearSlideNotes(newSlide);
 
   for (const element of newSlide.getPageElements()) {
     const title = element.getTitle();
@@ -1024,6 +1035,10 @@ function scaleSlideElements(slide: GoogleAppsScript.Slides.Slide, scale: number)
       line.setWeight(Math.max(1, lineWeight * scale));
     }
   }
+}
+
+function setSlideNotes(slide: GoogleAppsScript.Slides.Slide, text: string): void {
+  slide.getNotesPage().getSpeakerNotesShape().getText().setText(text);
 }
 
 function showError(source: string, e: unknown): void {

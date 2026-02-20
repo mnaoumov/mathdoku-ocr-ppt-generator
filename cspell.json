@@ -40,6 +40,7 @@
     "unitless",
     "issuetracker",
     "modeless",
-    "multicell"
+    "multicell",
+    "multisets"
   ]
 }

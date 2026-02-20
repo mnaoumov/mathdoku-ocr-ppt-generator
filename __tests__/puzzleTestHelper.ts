@@ -2,16 +2,26 @@ import type {
   CageRaw,
   PuzzleRenderer
 } from '../src/Puzzle.ts';
+import type { Strategy } from '../src/strategies/Strategy.ts';
 
 import { Puzzle } from '../src/Puzzle.ts';
 
-class NoOpRenderer implements PuzzleRenderer {
+export class TrackingRenderer implements PuzzleRenderer {
+  public readonly notesBySlide: string[] = [];
+  public get slideCount(): number {
+    return this.currentSlide + 1;
+  }
+
+  private currentSlide = 0;
+
+  private noteText = '';
+
   public beginPendingRender(): void {
-    // No-op
+    this.recordNote();
   }
 
   public renderCommittedChanges(): void {
-    // No-op
+    this.recordNote();
   }
 
   public renderPendingCandidates(): void {
@@ -29,6 +39,17 @@ class NoOpRenderer implements PuzzleRenderer {
   public renderPendingValue(): void {
     // No-op
   }
+
+  public setNoteText(text: string): void {
+    this.noteText = text;
+  }
+
+  private recordNote(): void {
+    if (this.noteText) {
+      this.notesBySlide[this.currentSlide] = this.noteText;
+    }
+    this.currentSlide++;
+  }
 }
 
 export function createTestPuzzle(
@@ -36,16 +57,18 @@ export function createTestPuzzle(
   cages: readonly CageRaw[],
   hasOperators: boolean,
   initialValues?: Map<string, number>,
-  initialCandidates?: Map<string, Set<number>>
+  initialCandidates?: Map<string, Set<number>>,
+  strategies?: readonly Strategy[],
+  renderer: PuzzleRenderer = new TrackingRenderer()
 ): Puzzle {
   return new Puzzle(
-    new NoOpRenderer(),
+    renderer,
     size,
     cages,
     hasOperators,
     'Test Puzzle',
     'test',
-    [],
+    strategies ?? [],
     initialValues,
     initialCandidates
   );

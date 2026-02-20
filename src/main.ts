@@ -1,8 +1,8 @@
 export {
   addChanges,
   addChangesFromInput,
-  applyEasyStrategies,
   importPuzzle,
   init,
-  onOpen
+  onOpen,
+  tryApplyAutomatedStrategies
 } from './View.ts';
