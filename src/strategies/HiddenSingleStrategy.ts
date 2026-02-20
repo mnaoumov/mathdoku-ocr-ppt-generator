@@ -46,7 +46,7 @@ export class HiddenSingleStrategy implements Strategy {
     results: HiddenSingleFound[],
     seen: Set<Cell>
   ): void {
-    for (let hiddenCandidate = 1; hiddenCandidate <= puzzle.size; hiddenCandidate++) {
+    for (let hiddenCandidate = 1; hiddenCandidate <= puzzle.puzzleSize; hiddenCandidate++) {
       let foundCell: Cell | null = null;
       let count = 0;
       for (const cell of house.cells) {

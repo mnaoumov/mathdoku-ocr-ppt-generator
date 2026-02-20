@@ -28,7 +28,7 @@ export class UniqueCageMultisetStrategy implements Strategy {
 
       const valueSetters: CellValueSetter[] = [];
       const candidateChanges: CellChange[] = [];
-      applyCageConstraint({ cage, gridSize: puzzle.size, hasOperators: puzzle.hasOperators }, valueSetters, candidateChanges);
+      applyCageConstraint({ cage, hasOperators: puzzle.hasOperators, puzzleSize: puzzle.puzzleSize }, valueSetters, candidateChanges);
 
       if (valueSetters.length > 0 || candidateChanges.length > 0) {
         affectedCageRefs.push(`@${cage.topLeft.ref}`);

@@ -32,8 +32,8 @@ export interface InitPuzzleSlidesOptions {
   readonly hasOperators: boolean;
   readonly initialStrategies: readonly Strategy[];
   readonly meta?: string;
+  readonly puzzleSize: number;
   readonly renderer: PuzzleRenderer;
-  readonly size: number;
   readonly strategies: readonly Strategy[];
   readonly title?: string;
 }
@@ -42,7 +42,7 @@ export interface PuzzleJson {
   readonly cages: readonly CageRaw[];
   readonly hasOperators?: boolean;
   readonly meta?: string;
-  readonly size: number;
+  readonly puzzleSize: number;
   readonly title?: string;
 }
 
@@ -52,16 +52,16 @@ export interface PuzzleOptions {
   readonly initialCandidates?: Map<string, Set<number>>;
   readonly initialValues?: Map<string, number>;
   readonly meta?: string;
+  readonly puzzleSize: number;
   readonly renderer: PuzzleRenderer;
-  readonly size: number;
   readonly strategies: readonly Strategy[];
   readonly title?: string;
 }
 
 export interface PuzzleRenderer {
-  beginPendingRender(gridSize: number): void;
+  beginPendingRender(puzzleSize: number): void;
   ensureLastSlide(): boolean;
-  renderCommittedChanges(gridSize: number): void;
+  renderCommittedChanges(puzzleSize: number): void;
   renderPendingCandidates(change: CandidatesChange): void;
   renderPendingClearance(change: CellClearance): void;
   renderPendingStrikethrough(change: CandidatesStrikethrough): void;
@@ -72,7 +72,7 @@ export interface PuzzleRenderer {
 export interface PuzzleState {
   readonly cages: readonly CageRaw[];
   readonly hasOperators: boolean;
-  readonly size: number;
+  readonly puzzleSize: number;
 }
 
 interface EnterCommand {
@@ -243,19 +243,19 @@ export class Puzzle {
   public readonly houses: readonly House[];
   public readonly meta: string;
 
+  public readonly puzzleSize: number;
   public readonly rows: readonly House[];
-  public readonly size: number;
   public readonly title: string;
   private pendingChanges: readonly CellChange[] = [];
   private readonly renderer: PuzzleRenderer;
   private readonly strategies: readonly Strategy[];
 
   public constructor(options: PuzzleOptions) {
-    const { cages: cagesRaw, hasOperators, initialCandidates, initialValues, meta = '', renderer, size, strategies, title = '' } = options;
+    const { cages: cagesRaw, hasOperators, initialCandidates, initialValues, meta = '', puzzleSize, renderer, strategies, title = '' } = options;
     this.hasOperators = hasOperators;
     this.meta = meta;
+    this.puzzleSize = puzzleSize;
     this.renderer = renderer;
-    this.size = size;
     this.strategies = strategies;
     this.title = title;
 
@@ -268,9 +268,9 @@ export class Puzzle {
     }
 
     const grid: Cell[][] = [];
-    for (let r = 0; r < size; r++) {
+    for (let r = 0; r < puzzleSize; r++) {
       const row: Cell[] = [];
-      for (let c = 0; c < size; c++) {
+      for (let c = 0; c < puzzleSize; c++) {
         const ref = cellRefA1(r, c);
         const cageIndex = cellToCageIndex[ref];
         if (cageIndex === undefined) {
@@ -283,7 +283,7 @@ export class Puzzle {
 
     const rows: House[] = [];
     const columns: House[] = [];
-    for (let i = 0; i < size; i++) {
+    for (let i = 0; i < puzzleSize; i++) {
       rows.push(new House('row', i + 1, ensureNonNullable(grid[i])));
       columns.push(new House('column', i + 1, grid.map((gridRow) => ensureNonNullable(gridRow[i]))));
     }
@@ -319,7 +319,7 @@ export class Puzzle {
 
   public applyChanges(changes: readonly CellChange[]): void {
     this.pendingChanges = changes;
-    this.renderer.beginPendingRender(this.size);
+    this.renderer.beginPendingRender(this.puzzleSize);
     for (const change of changes) {
       change.renderPending(this.renderer);
     }
@@ -329,7 +329,7 @@ export class Puzzle {
     for (const change of this.pendingChanges) {
       change.applyToModel();
     }
-    this.renderer.renderCommittedChanges(this.size);
+    this.renderer.renderCommittedChanges(this.puzzleSize);
     this.pendingChanges = [];
   }
 
@@ -563,8 +563,8 @@ export class Puzzle {
   private validateEnterCommand(cmd: EnterCommand): void {
     if (cmd.operation.type === 'value') {
       const value = cmd.operation.value;
-      if (value > this.size) {
-        throw new Error(`Value ${String(value)} exceeds grid size ${String(this.size)}`);
+      if (value > this.puzzleSize) {
+        throw new Error(`Value ${String(value)} exceeds puzzle size ${String(this.puzzleSize)}`);
       }
       const cell = ensureNonNullable(cmd.cells[0]);
       for (const peer of cell.peers) {
@@ -578,8 +578,8 @@ export class Puzzle {
 
     if (cmd.operation.type === 'candidates' || cmd.operation.type === 'strikethrough') {
       for (const v of cmd.operation.values) {
-        if (v > this.size) {
-          throw new Error(`Value ${String(v)} exceeds grid size ${String(this.size)}`);
+        if (v > this.puzzleSize) {
+          throw new Error(`Value ${String(v)} exceeds puzzle size ${String(this.puzzleSize)}`);
         }
       }
     }
@@ -591,8 +591,8 @@ export function initPuzzleSlides(options: InitPuzzleSlidesOptions): Puzzle {
     cages: options.cages,
     hasOperators: options.hasOperators,
     meta: options.meta ?? '',
+    puzzleSize: options.puzzleSize,
     renderer: options.renderer,
-    size: options.size,
     strategies: options.strategies,
     title: options.title ?? ''
   });

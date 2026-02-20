@@ -42,12 +42,12 @@ interface CandidatesProfile {
 }
 
 interface GridRenderContext {
-  readonly gridDimension: number;
   readonly gridLeft: number;
   readonly gridSize: number;
   readonly gridTop: number;
   readonly horizontalBounds: readonly (readonly boolean[])[];
   readonly profile: LayoutProfile;
+  readonly puzzleSize: number;
   readonly slide: GoogleAppsScript.Slides.Slide;
   readonly verticalBounds: readonly (readonly boolean[])[];
 }
@@ -87,28 +87,28 @@ interface ValueProfile {
 }
 
 class SlidesRenderer implements PuzzleRenderer {
-  private currentGridSize = 0;
+  private currentPuzzleSize = 0;
   private currentSlide: GoogleAppsScript.Slides.Slide | null = null;
   private noteText = '';
 
-  public beginPendingRender(gridSize: number): void {
-    makeNextSlide(gridSize, this.noteText);
+  public beginPendingRender(puzzleSize: number): void {
+    makeNextSlide(puzzleSize, this.noteText);
     this.currentSlide = getCurrentSlide();
-    this.currentGridSize = gridSize;
+    this.currentPuzzleSize = puzzleSize;
   }
 
   public ensureLastSlide(): boolean {
     return ensureLastSlideSelected();
   }
 
-  public renderCommittedChanges(gridSize: number): void {
-    makeNextSlide(gridSize, this.noteText);
+  public renderCommittedChanges(puzzleSize: number): void {
+    makeNextSlide(puzzleSize, this.noteText);
     this.currentSlide = null;
   }
 
   public renderPendingCandidates(change: CandidatesChange): void {
     const slide = ensureNonNullable(this.currentSlide);
-    applyPendingCandidates(slide, change.cell.ref, change.values, this.currentGridSize);
+    applyPendingCandidates(slide, change.cell.ref, change.values, this.currentPuzzleSize);
   }
 
   public renderPendingClearance(change: CellClearance): void {
@@ -159,18 +159,18 @@ export function addChangesFromInput(input: string): void {
 
 export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): void {
   const parsed: PuzzleJson = (typeof puzzleJson === 'string') ? JSON.parse(puzzleJson) as PuzzleJson : puzzleJson;
-  const gridDimension = parsed.size;
+  const puzzleSize = parsed.puzzleSize;
   const cages = parsed.cages;
   const hasOperators = parsed.hasOperators !== false;
   const title = parsed.title ?? '';
   const meta = parsed.meta ?? '';
 
-  const profile = LAYOUT_PROFILES[gridDimension];
+  const profile = LAYOUT_PROFILES[puzzleSize];
   if (!profile) {
-    throw new Error(`Unsupported size: ${String(gridDimension)}`);
+    throw new Error(`Unsupported size: ${String(puzzleSize)}`);
   }
 
-  const state: PuzzleState = { cages, hasOperators, size: gridDimension };
+  const state: PuzzleState = { cages, hasOperators, puzzleSize };
   const docProps = PropertiesService.getDocumentProperties();
   docProps.setProperty('mathdokuState', JSON.stringify(state));
   docProps.setProperty('mathdokuInitialized', 'true');
@@ -199,15 +199,15 @@ export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): 
   const gridTop = pt(in2pt(profile.gridTopInches));
   const gridSize = pt(in2pt(profile.gridSizeInches));
 
-  const { horizontalBounds, verticalBounds } = computeGridBoundaries(cages, gridDimension);
+  const { horizontalBounds, verticalBounds } = computeGridBoundaries(cages, puzzleSize);
 
   const ctx: GridRenderContext = {
-    gridDimension,
     gridLeft,
     gridSize,
     gridTop,
     horizontalBounds,
     profile,
+    puzzleSize,
     slide,
     verticalBounds
   };
@@ -261,14 +261,14 @@ export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): 
     hasOperators,
     initialStrategies: createInitialStrategies(),
     meta,
+    puzzleSize,
     renderer,
-    size: gridDimension,
-    strategies: createStrategies(gridDimension),
+    strategies: createStrategies(puzzleSize),
     title
   });
 
   Logger.log(
-    `Import complete: ${String(gridDimension)}x${String(gridDimension)} grid, pageW=${String(pres.getPageWidth())} pageH=${String(pres.getPageHeight())}`
+    `Import complete: ${String(puzzleSize)}x${String(puzzleSize)} grid, pageW=${String(pres.getPageWidth())} pageH=${String(pres.getPageHeight())}`
   );
 }
 
@@ -338,14 +338,14 @@ function applyPendingCandidates(
   slide: GoogleAppsScript.Slides.Slide,
   cellRef: string,
   values: readonly number[],
-  gridSize: number
+  puzzleSize: number
 ): void {
   const shape = getShapeByTitle(slide, `CANDIDATES_${cellRef}`);
   if (!shape) {
     throw new Error(`Candidates shape not found: CANDIDATES_${cellRef}`);
   }
 
-  const formatted = formatCandidates(values, gridSize);
+  const formatted = formatCandidates(values, puzzleSize);
   const textRange = shape.getText();
   textRange.setText(formatted);
   textRange.getTextStyle()
@@ -406,8 +406,8 @@ function buildPuzzleFromSlide(): Puzzle {
   const values = new Map<string, number>();
   const candidates = new Map<string, Set<number>>();
 
-  for (let r = 0; r < state.size; r++) {
-    for (let c = 0; c < state.size; c++) {
+  for (let r = 0; r < state.puzzleSize; r++) {
+    for (let c = 0; c < state.puzzleSize; c++) {
       const ref = cellRefA1(r, c);
       readCellFromSlide(slide, ref, values, candidates);
     }
@@ -418,9 +418,9 @@ function buildPuzzleFromSlide(): Puzzle {
     hasOperators: state.hasOperators,
     initialCandidates: candidates,
     initialValues: values,
+    puzzleSize: state.puzzleSize,
     renderer: new SlidesRenderer(),
-    size: state.size,
-    strategies: createStrategies(state.size)
+    strategies: createStrategies(state.puzzleSize)
   });
 }
 
@@ -446,8 +446,8 @@ function colorToHex(color: GoogleAppsScript.Slides.Color): string {
 }
 
 function drawAxisLabels(ctx: GridRenderContext): void {
-  const { gridDimension, gridLeft, gridTop, profile, slide } = ctx;
-  const cellWidth = ctx.gridSize / gridDimension;
+  const { gridLeft, gridTop, profile, puzzleSize, slide } = ctx;
+  const cellWidth = ctx.gridSize / puzzleSize;
   const axisFont = profile.axisFont;
   const labelHeight = pt(in2pt(profile.axisLabelHeight));
   const labelWidth = pt(in2pt(profile.axisLabelWidth));
@@ -457,7 +457,7 @@ function drawAxisLabels(ctx: GridRenderContext): void {
   const sideX = pt(gridLeft - sideOffset);
 
   let columnLeft = gridLeft;
-  for (let c = 0; c < gridDimension; c++) {
+  for (let c = 0; c < puzzleSize; c++) {
     const boxWidth = pt(cellWidth);
     const box = slide.insertTextBox(String.fromCharCode(CHAR_CODE_A + c), pt(columnLeft), topY, boxWidth, labelHeight);
     box.getText().getTextStyle()
@@ -467,7 +467,7 @@ function drawAxisLabels(ctx: GridRenderContext): void {
     columnLeft += cellWidth;
   }
 
-  for (let r = 0; r < gridDimension; r++) {
+  for (let r = 0; r < puzzleSize; r++) {
     const y = pt(gridTop + r * cellWidth + (cellWidth - labelHeight) / SIDE_COUNT);
     const box = slide.insertTextBox(String(r + 1), sideX, y, labelWidth, labelHeight);
     box.getText().getTextStyle()
@@ -479,20 +479,20 @@ function drawAxisLabels(ctx: GridRenderContext): void {
 }
 
 function drawCageBoundaries(ctx: GridRenderContext): void {
-  const { gridDimension, gridLeft, gridSize, gridTop, horizontalBounds, profile, slide, verticalBounds } = ctx;
+  const { gridLeft, gridSize, gridTop, horizontalBounds, profile, puzzleSize, slide, verticalBounds } = ctx;
   const thickPt = profile.thickPt;
-  const cellWidth = gridSize / gridDimension;
+  const cellWidth = gridSize / puzzleSize;
   const inset = thickPt / SIDE_COUNT;
 
-  for (let c = 1; c < gridDimension; c++) {
+  for (let c = 1; c < puzzleSize; c++) {
     let startRow = 0;
-    while (startRow < gridDimension) {
+    while (startRow < puzzleSize) {
       if (!ensureNonNullable(verticalBounds[startRow])[c - 1]) {
         startRow++;
         continue;
       }
       let endRow = startRow;
-      while (endRow + 1 < gridDimension && ensureNonNullable(verticalBounds[endRow + 1])[c - 1]) {
+      while (endRow + 1 < puzzleSize && ensureNonNullable(verticalBounds[endRow + 1])[c - 1]) {
         endRow++;
       }
       const x = gridLeft + c * cellWidth;
@@ -501,7 +501,7 @@ function drawCageBoundaries(ctx: GridRenderContext): void {
       if (startRow === 0) {
         y1 += inset;
       }
-      if (endRow === gridDimension - 1) {
+      if (endRow === puzzleSize - 1) {
         y2 -= inset;
       }
       drawThickRect(slide, x - thickPt / SIDE_COUNT, y1, thickPt, y2 - y1);
@@ -509,15 +509,15 @@ function drawCageBoundaries(ctx: GridRenderContext): void {
     }
   }
 
-  for (let r = 1; r < gridDimension; r++) {
+  for (let r = 1; r < puzzleSize; r++) {
     let startCol = 0;
-    while (startCol < gridDimension) {
+    while (startCol < puzzleSize) {
       if (!ensureNonNullable(horizontalBounds[r - 1])[startCol]) {
         startCol++;
         continue;
       }
       let endCol = startCol;
-      while (endCol + 1 < gridDimension && ensureNonNullable(horizontalBounds[r - 1])[endCol + 1]) {
+      while (endCol + 1 < puzzleSize && ensureNonNullable(horizontalBounds[r - 1])[endCol + 1]) {
         endCol++;
       }
       const y = gridTop + r * cellWidth;
@@ -526,7 +526,7 @@ function drawCageBoundaries(ctx: GridRenderContext): void {
       if (startCol === 0) {
         x1 += inset;
       }
-      if (endCol === gridDimension - 1) {
+      if (endCol === puzzleSize - 1) {
         x2 -= inset;
       }
       drawThickRect(slide, x1, y - thickPt / SIDE_COUNT, x2 - x1, thickPt);
@@ -536,8 +536,8 @@ function drawCageBoundaries(ctx: GridRenderContext): void {
 }
 
 function drawCageLabels(ctx: GridRenderContext, cages: readonly CageRaw[], hasOperators: boolean): void {
-  const { gridDimension, gridLeft, gridTop, profile, slide } = ctx;
-  const cellWidth = ctx.gridSize / gridDimension;
+  const { gridLeft, gridTop, profile, puzzleSize, slide } = ctx;
+  const cellWidth = ctx.gridSize / puzzleSize;
   const cageProfile = profile.cage;
   const insetX = cageProfile.insetLeftFraction * cellWidth;
   const insetY = cageProfile.insetTopFraction * cellWidth;
@@ -575,12 +575,12 @@ function drawCageLabels(ctx: GridRenderContext, cages: readonly CageRaw[], hasOp
 }
 
 function drawJoinSquares(ctx: GridRenderContext): void {
-  const { gridDimension, gridLeft, gridSize, gridTop, horizontalBounds, profile, slide, verticalBounds } = ctx;
+  const { gridLeft, gridSize, gridTop, horizontalBounds, profile, puzzleSize, slide, verticalBounds } = ctx;
   const thickPt = profile.thickPt;
-  const cellWidth = gridSize / gridDimension;
+  const cellWidth = gridSize / puzzleSize;
 
-  for (let vertexRow = 1; vertexRow < gridDimension; vertexRow++) {
-    for (let vertexCol = 1; vertexCol < gridDimension; vertexCol++) {
+  for (let vertexRow = 1; vertexRow < puzzleSize; vertexRow++) {
+    for (let vertexCol = 1; vertexCol < puzzleSize; vertexCol++) {
       const boundAbove = ensureNonNullable(verticalBounds[vertexRow - 1])[vertexCol - 1];
       const boundBelow = ensureNonNullable(verticalBounds[vertexRow])[vertexCol - 1];
       const boundLeft = ensureNonNullable(horizontalBounds[vertexRow - 1])[vertexCol - 1];
@@ -625,13 +625,13 @@ function drawThickRect(
 }
 
 function drawThinGrid(ctx: GridRenderContext): void {
-  const { gridDimension, gridLeft, gridSize, gridTop, horizontalBounds, profile, slide, verticalBounds } = ctx;
+  const { gridLeft, gridSize, gridTop, horizontalBounds, profile, puzzleSize, slide, verticalBounds } = ctx;
   const thinWidth = profile.thinPt;
-  const cellWidth = gridSize / gridDimension;
+  const cellWidth = gridSize / puzzleSize;
   const halfThinWidth = thinWidth / SIDE_COUNT;
 
-  for (let c = 1; c < gridDimension; c++) {
-    for (let r = 0; r < gridDimension; r++) {
+  for (let c = 1; c < puzzleSize; c++) {
+    for (let r = 0; r < puzzleSize; r++) {
       if (ensureNonNullable(verticalBounds[r])[c - 1]) {
         continue;
       }
@@ -643,8 +643,8 @@ function drawThinGrid(ctx: GridRenderContext): void {
     }
   }
 
-  for (let r = 1; r < gridDimension; r++) {
-    for (let c = 0; c < gridDimension; c++) {
+  for (let r = 1; r < puzzleSize; r++) {
+    for (let c = 0; c < puzzleSize; c++) {
       if (ensureNonNullable(horizontalBounds[r - 1])[c]) {
         continue;
       }
@@ -672,7 +672,7 @@ function ensureLastSlideSelected(): boolean {
   return true;
 }
 
-function finalizeCandidatesShape(shape: GoogleAppsScript.Slides.Shape, gridSize: number): void {
+function finalizeCandidatesShape(shape: GoogleAppsScript.Slides.Shape, puzzleSize: number): void {
   const textRange = shape.getText();
   const fullText = textRange.asString().replace(/\n$/, '');
   if (fullText.trim().length === 0 || fullText.trim() === ' ') {
@@ -707,7 +707,7 @@ function finalizeCandidatesShape(shape: GoogleAppsScript.Slides.Shape, gridSize:
   }
 
   if (hasGreenStrike) {
-    const newFormatted = formatCandidates(survivingValues, gridSize);
+    const newFormatted = formatCandidates(survivingValues, puzzleSize);
     textRange.setText(newFormatted);
     textRange.getTextStyle()
       .setFontFamily(CANDIDATES_FONT)
@@ -764,12 +764,12 @@ function fitFontSize(text: string, basePt: number, boxWidthIn: number, boxHeight
   return Math.max(MIN_FONT_SIZE, Math.min(basePt, widthBased, heightBased));
 }
 
-function formatCandidates(values: readonly number[], gridSize: number): string {
+function formatCandidates(values: readonly number[], puzzleSize: number): string {
   const valueSet = new Set(values);
-  const firstRowCount = Math.ceil(gridSize / CANDIDATE_ROW_COUNT);
+  const firstRowCount = Math.ceil(puzzleSize / CANDIDATE_ROW_COUNT);
   let line1 = '';
   let line2 = '';
-  for (let d = 1; d <= gridSize; d++) {
+  for (let d = 1; d <= puzzleSize; d++) {
     const ch = valueSet.has(d) ? String(d) : ' ';
     if (d <= firstRowCount) {
       line1 += ch;
@@ -824,7 +824,7 @@ function isColorEqual(color: GoogleAppsScript.Slides.Color, hex: string): boolea
   return colorToHex(color) === hex.toUpperCase();
 }
 
-function makeNextSlide(gridSize: number, noteText = ''): void {
+function makeNextSlide(puzzleSize: number, noteText = ''): void {
   const slide = getCurrentSlide();
   if (noteText) {
     setSlideNotes(slide, noteText);
@@ -843,7 +843,7 @@ function makeNextSlide(gridSize: number, noteText = ''): void {
       if (title.startsWith('VALUE_')) {
         finalizeValueShape(element.asShape());
       } else if (title.startsWith('CANDIDATES_')) {
-        finalizeCandidatesShape(element.asShape(), gridSize);
+        finalizeCandidatesShape(element.asShape(), puzzleSize);
       }
     } catch { /* Skip shapes that don't support text */ }
   }
@@ -930,13 +930,13 @@ function renderSolveNotesColumns(ctx: GridRenderContext): void {
 }
 
 function renderValueAndCandidateBoxes(ctx: GridRenderContext): void {
-  const { gridDimension, gridLeft, gridTop, profile, slide } = ctx;
-  const cellWidth = ctx.gridSize / gridDimension;
+  const { gridLeft, gridTop, profile, puzzleSize, slide } = ctx;
+  const cellWidth = ctx.gridSize / puzzleSize;
   const valueProfile = profile.value;
   const candidatesProfile = profile.candidates;
 
-  for (let r = 0; r < gridDimension; r++) {
-    for (let c = 0; c < gridDimension; c++) {
+  for (let r = 0; r < puzzleSize; r++) {
+    for (let c = 0; c < puzzleSize; c++) {
       const cellLeft = gridLeft + c * cellWidth;
       const cellTop = gridTop + r * cellWidth;
       const ref = cellRefA1(r, c);

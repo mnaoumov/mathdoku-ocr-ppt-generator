@@ -16,7 +16,7 @@ describe('NakedSetStrategy', () => {
       { cells: ['B1', 'B2', 'B3'], operator: '+', value: 6 },
       { cells: ['C1', 'C2', 'C3'], operator: '+', value: 6 }
     ];
-    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 3 });
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, puzzleSize: 3 });
     for (const cell of puzzle.cells) {
       cell.setCandidates([1, 2, 3]);
     }
@@ -30,7 +30,7 @@ describe('NakedSetStrategy', () => {
       { cells: ['B1', 'B2', 'B3'], operator: '+', value: 6 },
       { cells: ['C1', 'C2', 'C3'], operator: '+', value: 6 }
     ];
-    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 3 });
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, puzzleSize: 3 });
     puzzle.getCell('A1').setCandidates([1, 2]);
     puzzle.getCell('B1').setCandidates([1, 2]);
     puzzle.getCell('C1').setCandidates([1, 2, 3]);
@@ -62,7 +62,7 @@ describe('NakedSetStrategy', () => {
       { cells: ['B1', 'B2', 'B3'], operator: '+', value: 6 },
       { cells: ['C1', 'C2', 'C3'], operator: '+', value: 6 }
     ];
-    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 3 });
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, puzzleSize: 3 });
     puzzle.getCell('A1').setValue(1);
     puzzle.getCell('B1').setCandidates([2, 3]);
     puzzle.getCell('C1').setCandidates([2, 3]);

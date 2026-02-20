@@ -10,7 +10,7 @@ export interface GridBoundaries {
 
 const BINARY_OP_SIZE = 2;
 
-export function computeGridBoundaries(cages: readonly CageRaw[], gridDimension: number): GridBoundaries {
+export function computeGridBoundaries(cages: readonly CageRaw[], puzzleSize: number): GridBoundaries {
   const cellToCage: Record<string, number> = {};
   for (let cageIndex = 0; cageIndex < cages.length; cageIndex++) {
     const cage = ensureNonNullable(cages[cageIndex]);
@@ -21,17 +21,17 @@ export function computeGridBoundaries(cages: readonly CageRaw[], gridDimension: 
 
   const verticalBounds: boolean[][] = [];
   const horizontalBounds: boolean[][] = [];
-  for (let r = 0; r < gridDimension; r++) {
+  for (let r = 0; r < puzzleSize; r++) {
     const row: boolean[] = [];
     verticalBounds[r] = row;
-    for (let c = 1; c < gridDimension; c++) {
+    for (let c = 1; c < puzzleSize; c++) {
       row[c - 1] = cellToCage[cellRefA1(r, c - 1)] !== cellToCage[cellRefA1(r, c)];
     }
   }
-  for (let r = 1; r < gridDimension; r++) {
+  for (let r = 1; r < puzzleSize; r++) {
     const row: boolean[] = [];
     horizontalBounds[r - 1] = row;
-    for (let c = 0; c < gridDimension; c++) {
+    for (let c = 0; c < puzzleSize; c++) {
       row[c] = cellToCage[cellRefA1(r - 1, c)] !== cellToCage[cellRefA1(r, c)];
     }
   }

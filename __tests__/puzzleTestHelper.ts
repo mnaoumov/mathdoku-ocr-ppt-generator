@@ -11,8 +11,8 @@ export interface CreateTestPuzzleOptions {
   readonly hasOperators: boolean;
   readonly initialCandidates?: Map<string, Set<number>>;
   readonly initialValues?: Map<string, number>;
+  readonly puzzleSize: number;
   readonly renderer?: PuzzleRenderer;
-  readonly size: number;
   readonly strategies?: readonly Strategy[];
 }
 
@@ -72,8 +72,8 @@ export function createTestPuzzle(options: CreateTestPuzzleOptions): Puzzle {
     cages: options.cages,
     hasOperators: options.hasOperators,
     meta: 'test',
+    puzzleSize: options.puzzleSize,
     renderer: options.renderer ?? new TrackingRenderer(),
-    size: options.size,
     strategies: options.strategies ?? [],
     title: 'Test Puzzle',
     ...options.initialCandidates !== undefined && { initialCandidates: options.initialCandidates },

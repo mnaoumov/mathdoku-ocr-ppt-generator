@@ -8,7 +8,7 @@ import { CandidatesChange } from '../cellChanges/CandidatesChange.ts';
 
 export class FillAllCandidatesStrategy implements Strategy {
   public tryApply(puzzle: Puzzle): null | StrategyResult {
-    const allValues = Array.from({ length: puzzle.size }, (_, i) => i + 1);
+    const allValues = Array.from({ length: puzzle.puzzleSize }, (_, i) => i + 1);
     const changes = puzzle.cells
       .filter((cell) => !cell.isSolved)
       .map((cell) => new CandidatesChange(cell, allValues));

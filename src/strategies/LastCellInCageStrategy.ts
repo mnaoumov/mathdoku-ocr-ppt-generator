@@ -44,7 +44,7 @@ export class LastCellInCageStrategy implements Strategy {
         cageValue,
         cage.operator,
         puzzle.hasOperators,
-        puzzle.size,
+        puzzle.puzzleSize,
         cage.cells.length
       );
 
@@ -74,17 +74,17 @@ export class LastCellInCageStrategy implements Strategy {
     };
   }
 
-  private computeForAddition(solvedValues: readonly number[], cageValue: number, gridSize: number): Set<number> {
+  private computeForAddition(solvedValues: readonly number[], cageValue: number, puzzleSize: number): Set<number> {
     const solvedSum = solvedValues.reduce((sum, v) => sum + v, 0);
     const needed = cageValue - solvedSum;
     const result = new Set<number>();
-    if (needed >= 1 && needed <= gridSize) {
+    if (needed >= 1 && needed <= puzzleSize) {
       result.add(needed);
     }
     return result;
   }
 
-  private computeForDivision(solvedValues: readonly number[], cageValue: number, gridSize: number): Set<number> {
+  private computeForDivision(solvedValues: readonly number[], cageValue: number, puzzleSize: number): Set<number> {
     if (solvedValues.length !== 1) {
       return new Set<number>();
     }
@@ -92,20 +92,20 @@ export class LastCellInCageStrategy implements Strategy {
     const result = new Set<number>();
     // LastCell is the larger: lastCell / other = cageValue → lastCell = other * cageValue
     const asLarger = other * cageValue;
-    if (asLarger >= 1 && asLarger <= gridSize) {
+    if (asLarger >= 1 && asLarger <= puzzleSize) {
       result.add(asLarger);
     }
     // LastCell is the smaller: other / lastCell = cageValue → lastCell = other / cageValue
     if (cageValue !== 0 && other % cageValue === 0) {
       const asSmaller = other / cageValue;
-      if (asSmaller >= 1 && asSmaller <= gridSize) {
+      if (asSmaller >= 1 && asSmaller <= puzzleSize) {
         result.add(asSmaller);
       }
     }
     return result;
   }
 
-  private computeForMultiplication(solvedValues: readonly number[], cageValue: number, gridSize: number): Set<number> {
+  private computeForMultiplication(solvedValues: readonly number[], cageValue: number, puzzleSize: number): Set<number> {
     const solvedProduct = solvedValues.reduce((prod, v) => prod * v, 1);
     const result = new Set<number>();
     if (solvedProduct === 0) {
@@ -113,14 +113,14 @@ export class LastCellInCageStrategy implements Strategy {
     }
     if (cageValue % solvedProduct === 0) {
       const needed = cageValue / solvedProduct;
-      if (needed >= 1 && needed <= gridSize) {
+      if (needed >= 1 && needed <= puzzleSize) {
         result.add(needed);
       }
     }
     return result;
   }
 
-  private computeForSubtraction(solvedValues: readonly number[], cageValue: number, gridSize: number): Set<number> {
+  private computeForSubtraction(solvedValues: readonly number[], cageValue: number, puzzleSize: number): Set<number> {
     if (solvedValues.length !== 1) {
       return new Set<number>();
     }
@@ -128,12 +128,12 @@ export class LastCellInCageStrategy implements Strategy {
     const result = new Set<number>();
     // LastCell - other = cageValue → lastCell = other + cageValue
     const larger = other + cageValue;
-    if (larger >= 1 && larger <= gridSize) {
+    if (larger >= 1 && larger <= puzzleSize) {
       result.add(larger);
     }
     // Other - lastCell = cageValue → lastCell = other - cageValue
     const smaller = other - cageValue;
-    if (smaller >= 1 && smaller <= gridSize) {
+    if (smaller >= 1 && smaller <= puzzleSize) {
       result.add(smaller);
     }
     return result;
@@ -145,13 +145,13 @@ export class LastCellInCageStrategy implements Strategy {
     cageValue: number,
     cageOperator: string | undefined,
     hasOperators: boolean,
-    gridSize: number,
+    puzzleSize: number,
     cellCount: number
   ): Set<number> {
     const currentCandidates = new Set(lastCell.getCandidates());
 
     if (hasOperators && cageOperator) {
-      const computed = this.getValidForOperator(cageOperator, solvedValues, cageValue, gridSize);
+      const computed = this.getValidForOperator(cageOperator, solvedValues, cageValue, puzzleSize);
       return new Set([...computed].filter((v) => currentCandidates.has(v)));
     }
 
@@ -161,7 +161,7 @@ export class LastCellInCageStrategy implements Strategy {
       : ['+', 'x'];
     const valid = new Set<number>();
     for (const op of operators) {
-      for (const v of this.getValidForOperator(op, solvedValues, cageValue, gridSize)) {
+      for (const v of this.getValidForOperator(op, solvedValues, cageValue, puzzleSize)) {
         if (currentCandidates.has(v)) {
           valid.add(v);
         }
@@ -174,18 +174,18 @@ export class LastCellInCageStrategy implements Strategy {
     operator: string,
     solvedValues: readonly number[],
     cageValue: number,
-    gridSize: number
+    puzzleSize: number
   ): Set<number> {
     switch (operator) {
       case '-':
-        return this.computeForSubtraction(solvedValues, cageValue, gridSize);
+        return this.computeForSubtraction(solvedValues, cageValue, puzzleSize);
       case '*':
       case 'x':
-        return this.computeForMultiplication(solvedValues, cageValue, gridSize);
+        return this.computeForMultiplication(solvedValues, cageValue, puzzleSize);
       case '/':
-        return this.computeForDivision(solvedValues, cageValue, gridSize);
+        return this.computeForDivision(solvedValues, cageValue, puzzleSize);
       case '+':
-        return this.computeForAddition(solvedValues, cageValue, gridSize);
+        return this.computeForAddition(solvedValues, cageValue, puzzleSize);
       default:
         return new Set<number>();
     }

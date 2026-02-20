@@ -13,14 +13,14 @@ import { ensureNonNullable } from './typeGuards.ts';
 
 export interface CageConstraintContext {
   readonly cage: Cage;
-  readonly gridSize: number;
   readonly hasOperators: boolean;
+  readonly puzzleSize: number;
 }
 
 export interface CageTupleOptions {
   readonly cells: readonly Cell[];
-  readonly gridSize: number;
   readonly operator: string;
+  readonly puzzleSize: number;
   readonly value: number;
 }
 
@@ -29,7 +29,7 @@ export function applyCageConstraint(
   valueSetters: CellValueSetter[],
   candidateChanges: CellChange[]
 ): void {
-  const { cage, gridSize } = ctx;
+  const { cage, puzzleSize } = ctx;
   const cageValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
   if (cageValue === undefined || isNaN(cageValue)) {
     return;
@@ -56,7 +56,7 @@ export function applyCageConstraint(
   }
 
   const narrowedValues = ensureNonNullable([...distinctSets][0]).split(',').map(Number);
-  if (narrowedValues.length >= gridSize) {
+  if (narrowedValues.length >= puzzleSize) {
     return;
   }
 
@@ -82,14 +82,14 @@ export function collectCageTuples(
   cageValue: number,
   ctx: CageConstraintContext
 ): number[][] {
-  const { cage, gridSize, hasOperators } = ctx;
+  const { cage, hasOperators, puzzleSize } = ctx;
   if (hasOperators && cage.operator) {
-    return computeValidCageTuples({ cells: cage.cells, gridSize, operator: cage.operator, value: cageValue });
+    return computeValidCageTuples({ cells: cage.cells, operator: cage.operator, puzzleSize, value: cageValue });
   }
   const tupleSet = new Set<string>();
   const tuples: number[][] = [];
   for (const op of ['+', '-', 'x', '/']) {
-    for (const t of computeValidCageTuples({ cells: cage.cells, gridSize, operator: op, value: cageValue })) {
+    for (const t of computeValidCageTuples({ cells: cage.cells, operator: op, puzzleSize, value: cageValue })) {
       const key = t.join(',');
       if (!tupleSet.has(key)) {
         tupleSet.add(key);
@@ -101,7 +101,7 @@ export function collectCageTuples(
 }
 
 export function computeValidCageTuples(options: CageTupleOptions): number[][] {
-  const { cells, gridSize, operator, value } = options;
+  const { cells, operator, puzzleSize, value } = options;
   const tuples: number[][] = [];
   const numCells = cells.length;
 
@@ -113,7 +113,7 @@ export function computeValidCageTuples(options: CageTupleOptions): number[][] {
       return;
     }
     const cell = ensureNonNullable(cells[depth]);
-    for (let v = 1; v <= gridSize; v++) {
+    for (let v = 1; v <= puzzleSize; v++) {
       let valid = true;
       for (let i = 0; i < depth; i++) {
         if (ensureNonNullable(tuple[i]) === v) {
