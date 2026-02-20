@@ -108,7 +108,6 @@ const API_NAMES: Record<string, string> = {
   'slides.googleapis.com': 'Google Slides API'
 };
 
-const DEFAULT_PUZZLE_SIZE = 4;
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CREDENTIALS_FILE = join(ROOT, 'credentials.json');
 const TEMPLATE_PPTX = join(ROOT, 'assets', 'template-960x540.pptx');
@@ -156,7 +155,10 @@ async function bindAppsScript(auth: OAuth2Client, presId: string): Promise<strin
 }
 
 function buildPuzzleJson(spec: YamlSpec, name: string): PuzzleJson {
-  const n = spec.size ?? DEFAULT_PUZZLE_SIZE;
+  if (spec.size === undefined) {
+    throw new Error('size is required in YAML spec');
+  }
+  const n = spec.size;
   const difficulty = spec.difficulty;
   const hasOperators = spec.hasOperators ?? true;
 
