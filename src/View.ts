@@ -18,7 +18,10 @@ import {
   initPuzzleSlides,
   Puzzle
 } from './Puzzle.ts';
-import { createDefaultStrategies } from './strategies/createDefaultStrategies.ts';
+import {
+  createInitialStrategies,
+  createRerunnableStrategies
+} from './strategies/createDefaultStrategies.ts';
 import { ensureNonNullable } from './typeGuards.ts';
 
 interface CageProfile {
@@ -233,7 +236,7 @@ export function importPuzzle(puzzleJson: PuzzleJson | string, presId?: string): 
 
   // Init slides via Puzzle
   const renderer = new SlidesRenderer();
-  initPuzzleSlides(renderer, gridDimension, cages, hasOperators, title, meta, createDefaultStrategies(gridDimension));
+  initPuzzleSlides(renderer, gridDimension, cages, hasOperators, title, meta, createInitialStrategies(), createRerunnableStrategies(gridDimension));
 
   Logger.log(
     `Import complete: ${String(gridDimension)}x${String(gridDimension)} grid, pageW=${String(pres.getPageWidth())} pageH=${String(pres.getPageHeight())}`
@@ -404,7 +407,7 @@ function buildPuzzleFromSlide(): Puzzle {
     state.hasOperators,
     '',
     '',
-    createDefaultStrategies(state.size),
+    createRerunnableStrategies(state.size),
     values,
     candidates
   );

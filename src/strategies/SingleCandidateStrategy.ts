@@ -1,15 +1,17 @@
-import type { CellChange } from '../cellChanges/CellChange.ts';
 import type {
   CellValueSetter,
   Puzzle
 } from '../Puzzle.ts';
-import type { Strategy } from './Strategy.ts';
+import type {
+  Strategy,
+  StrategyResult
+} from './Strategy.ts';
 
 import { buildAutoEliminateChanges } from '../cageConstraints.ts';
 import { ensureNonNullable } from '../typeGuards.ts';
 
 export class SingleCandidateStrategy implements Strategy {
-  public tryApply(puzzle: Puzzle): CellChange[] | null {
+  public tryApply(puzzle: Puzzle): null | StrategyResult {
     const results: CellValueSetter[] = [];
     for (const cell of puzzle.cells) {
       if (cell.isSolved) {
@@ -23,6 +25,10 @@ export class SingleCandidateStrategy implements Strategy {
     if (results.length === 0) {
       return null;
     }
-    return buildAutoEliminateChanges(results);
+    const cellRefs = results.map((r) => r.cell.ref).join(', ');
+    return {
+      changes: buildAutoEliminateChanges(results),
+      note: `Single candidate: ${cellRefs}`
+    };
   }
 }

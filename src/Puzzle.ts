@@ -2,11 +2,11 @@ import type { CellChange } from './cellChanges/CellChange.ts';
 import type { CellOperation } from './parsers.ts';
 import type { Strategy } from './strategies/Strategy.ts';
 
-import { buildCageConstraintChanges } from './cageConstraints.ts';
 import { CandidatesChange } from './cellChanges/CandidatesChange.ts';
 import { CandidatesStrikethrough } from './cellChanges/CandidatesStrikethrough.ts';
 import { CellClearance } from './cellChanges/CellClearance.ts';
 import { ValueChange } from './cellChanges/ValueChange.ts';
+import { evaluateTuple } from './combinatorics.ts';
 import {
   cellRefA1,
   parseOperation
@@ -152,6 +152,10 @@ export class Cell {
     this.ref = cellRefA1(rowIndex, colIndex);
   }
 
+  public static compare(a: Cell, b: Cell): number {
+    return a.rowIndex - b.rowIndex || a.colIndex - b.colIndex;
+  }
+
   public addCandidate(value: number): void {
     this._candidates.add(value);
   }
@@ -293,21 +297,6 @@ export class Puzzle {
     }
   }
 
-  public buildInitChanges(): CellChange[][] {
-    const batches: CellChange[][] = [];
-    const allValues = Array.from({ length: this.size }, (_, i) => i + 1);
-    const allCandidateChanges: CellChange[] = [];
-    for (const cell of this.cells) {
-      allCandidateChanges.push(new CandidatesChange(cell, allValues));
-    }
-    batches.push(allCandidateChanges);
-    const cageChanges = buildCageConstraintChanges(this.cages, this.hasOperators, this.size);
-    if (cageChanges.length > 0) {
-      batches.push(cageChanges);
-    }
-    return batches;
-  }
-
   public commit(): void {
     for (const change of this.pendingChanges) {
       change.applyToModel();
@@ -353,7 +342,6 @@ export class Puzzle {
     if (!this.renderer.ensureLastSlide()) {
       return false;
     }
-    this.renderer.setNoteText(AUTOMATED_STRATEGIES_NOTE);
     let applied = false;
     let canApply = true;
     while (canApply) {
@@ -361,7 +349,8 @@ export class Puzzle {
       for (const strategy of this.strategies) {
         const result = strategy.tryApply(this);
         if (result) {
-          this.applyChanges(result);
+          this.renderer.setNoteText(result.note);
+          this.applyChanges(result.changes);
           this.commit();
           applied = true;
           canApply = true;
@@ -374,6 +363,9 @@ export class Puzzle {
 
   private buildEnterChanges(input: string): CellChange[] {
     const commands = this.parseInput(input);
+    for (const cmd of commands) {
+      this.validateEnterCommand(cmd);
+    }
     const changes: CellChange[] = [];
     for (const cmd of commands) {
       for (const cell of cmd.cells) {
@@ -514,6 +506,56 @@ export class Puzzle {
     }
     return commands;
   }
+
+  private validateCageAfterValue(cell: Cell, value: number): void {
+    const cage = cell.cage;
+    const cageValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
+    if (cageValue === undefined || isNaN(cageValue)) {
+      return;
+    }
+    // Only validate when all cells in the cage would be solved
+    const allSolved = cage.cells.every((c) => c === cell ? true : c.isSolved);
+    if (!allSolved) {
+      return;
+    }
+    const tuple = cage.cells.map((c) => c === cell ? value : ensureNonNullable(c.value));
+    if (this.hasOperators && cage.operator) {
+      if (evaluateTuple(tuple, cage.operator) !== cageValue) {
+        throw new Error(`${cell.ref} = ${String(value)} makes cage @${cage.topLeft.ref} invalid`);
+      }
+    } else {
+      // Unknown operator: error only if NO operator works
+      const validForAny = ['+', '-', 'x', '/'].some((op) => evaluateTuple(tuple, op) === cageValue);
+      if (!validForAny) {
+        throw new Error(`${cell.ref} = ${String(value)} makes cage @${cage.topLeft.ref} invalid`);
+      }
+    }
+  }
+
+  private validateEnterCommand(cmd: EnterCommand): void {
+    if (cmd.operation.type === 'value') {
+      const value = cmd.operation.value;
+      if (value > this.size) {
+        throw new Error(`Value ${String(value)} exceeds grid size ${String(this.size)}`);
+      }
+      const cell = ensureNonNullable(cmd.cells[0]);
+      for (const peer of cell.peers) {
+        if (peer.value === value) {
+          throw new Error(`${cell.ref} = ${String(value)} conflicts with ${peer.ref} which is already ${String(value)}`);
+        }
+      }
+      this.validateCageAfterValue(cell, value);
+      return;
+    }
+
+    if (cmd.operation.type === 'candidates' || cmd.operation.type === 'strikethrough') {
+      for (const v of cmd.operation.values) {
+        if (v > this.size) {
+          throw new Error(`Value ${String(v)} exceeds grid size ${String(this.size)}`);
+        }
+      }
+    }
+  }
 }
 
 export function initPuzzleSlides(
@@ -523,22 +565,20 @@ export function initPuzzleSlides(
   hasOperators: boolean,
   title: string,
   meta: string,
-  strategies: readonly Strategy[]
+  initStrategies: readonly Strategy[],
+  rerunnableStrategies: readonly Strategy[]
 ): Puzzle {
-  const puzzle = new Puzzle(renderer, size, cages, hasOperators, title, meta, strategies);
-  const batches = puzzle.buildInitChanges();
-  const batchNotes = [INIT_CANDIDATES_NOTE, INIT_CAGE_CONSTRAINTS_NOTE];
-  for (let i = 0; i < batches.length; i++) {
-    renderer.setNoteText(batchNotes[i] ?? '');
-    puzzle.applyChanges(ensureNonNullable(batches[i]));
-    puzzle.commit();
+  const puzzle = new Puzzle(renderer, size, cages, hasOperators, title, meta, rerunnableStrategies);
+  for (const strategy of initStrategies) {
+    const result = strategy.tryApply(puzzle);
+    if (result) {
+      renderer.setNoteText(result.note);
+      puzzle.applyChanges(result.changes);
+      puzzle.commit();
+    }
   }
   return puzzle;
 }
-
-const AUTOMATED_STRATEGIES_NOTE = 'Applying automated strategies';
-const INIT_CAGE_CONSTRAINTS_NOTE = 'Filling single cell values and unique cage multisets';
-const INIT_CANDIDATES_NOTE = 'Filling all possible cell candidates';
 
 // Re-export parseCellRef for use outside
 import { parseCellRef } from './parsers.ts';

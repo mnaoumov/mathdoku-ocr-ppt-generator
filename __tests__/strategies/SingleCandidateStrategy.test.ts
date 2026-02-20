@@ -17,8 +17,7 @@ describe('SingleCandidateStrategy', () => {
       { cells: ['A1', 'B1'], operator: '+', value: 3 },
       { cells: ['A2', 'B2'], operator: '+', value: 3 }
     ];
-    const puzzle = createTestPuzzle(2, cages, true);
-    // Give all cells 2 candidates
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
     for (const cell of puzzle.cells) {
       cell.setCandidates([1, 2]);
     }
@@ -30,7 +29,7 @@ describe('SingleCandidateStrategy', () => {
       { cells: ['A1', 'B1'], operator: '+', value: 3 },
       { cells: ['A2', 'B2'], operator: '+', value: 3 }
     ];
-    const puzzle = createTestPuzzle(2, cages, true);
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([1, 2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -38,7 +37,9 @@ describe('SingleCandidateStrategy', () => {
 
     const result = strategy.tryApply(puzzle);
     expect(result).not.toBeNull();
-    expect(ensureNonNullable(result).some((c) => c instanceof ValueChange && c.cell.ref === 'A1' && c.value === 1)).toBe(true);
+    const { changes, note } = ensureNonNullable(result);
+    expect(changes.some((c) => c instanceof ValueChange && c.cell.ref === 'A1' && c.value === 1)).toBe(true);
+    expect(note).toBe('Single candidate: A1');
   });
 
   it('skips already solved cells', () => {
@@ -46,7 +47,7 @@ describe('SingleCandidateStrategy', () => {
       { cells: ['A1', 'B1'], operator: '+', value: 3 },
       { cells: ['A2', 'B2'], operator: '+', value: 3 }
     ];
-    const puzzle = createTestPuzzle(2, cages, true);
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
     puzzle.getCell('A1').setValue(1);
     puzzle.getCell('B1').setCandidates([2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -54,8 +55,8 @@ describe('SingleCandidateStrategy', () => {
 
     const result = strategy.tryApply(puzzle);
     expect(result).not.toBeNull();
-    // Only B1 should be found (A1 is already solved)
-    const valueChanges = ensureNonNullable(result).filter((c) => c instanceof ValueChange);
+    const { changes } = ensureNonNullable(result);
+    const valueChanges = changes.filter((c) => c instanceof ValueChange);
     expect(valueChanges).toHaveLength(1);
     expect(ensureNonNullable(valueChanges[0]).cell.ref).toBe('B1');
   });

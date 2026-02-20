@@ -41,6 +41,8 @@
     "issuetracker",
     "modeless",
     "multicell",
-    "multisets"
+    "multiset",
+    "multisets",
+    "rerunnable"
   ]
 }

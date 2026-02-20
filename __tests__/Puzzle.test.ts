@@ -9,8 +9,10 @@ import { CandidatesStrikethrough } from '../src/cellChanges/CandidatesStrikethro
 import { CellClearance } from '../src/cellChanges/CellClearance.ts';
 import { ValueChange } from '../src/cellChanges/ValueChange.ts';
 import { initPuzzleSlides } from '../src/Puzzle.ts';
-import { createDefaultStrategies } from '../src/strategies/createDefaultStrategies.ts';
-import { ensureNonNullable } from '../src/typeGuards.ts';
+import {
+  createInitialStrategies,
+  createRerunnableStrategies
+} from '../src/strategies/createDefaultStrategies.ts';
 import {
   createTestPuzzle,
   TrackingRenderer
@@ -30,18 +32,18 @@ const SIZE_4_CAGES = [
 describe('Puzzle', () => {
   describe('constructor', () => {
     it('creates cells for all grid positions', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       expect(puzzle.cells).toHaveLength(16);
     });
 
     it('creates correct number of rows and columns', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       expect(puzzle.rows).toHaveLength(4);
       expect(puzzle.columns).toHaveLength(4);
     });
 
     it('creates houses combining rows and columns', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       expect(puzzle.houses).toHaveLength(8);
     });
 
@@ -49,62 +51,45 @@ describe('Puzzle', () => {
       const incompleteCages = [
         { cells: ['A1'], value: 1 }
       ];
-      expect(() => createTestPuzzle(2, incompleteCages, true)).toThrow('not found in any cage');
+      expect(() => createTestPuzzle({ cages: incompleteCages, hasOperators: true, size: 2 })).toThrow('not found in any cage');
     });
   });
 
   describe('getCell', () => {
     it('retrieves cell by ref string', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       const cell = puzzle.getCell('B3');
       expect(cell.ref).toBe('B3');
     });
 
     it('retrieves cell by row and column ids', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       const cell = puzzle.getCell(2, 3);
       expect(cell.ref).toBe('C2');
     });
   });
 
-  describe('buildInitChanges', () => {
-    it('returns two batches: all candidates then cage constraints', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
-      const batches = puzzle.buildInitChanges();
-      expect(batches).toHaveLength(2);
-      // First batch: all cells get all candidates
-      const firstBatch = ensureNonNullable(batches[0]);
-      expect(firstBatch).toHaveLength(16);
-      for (const change of firstBatch) {
-        expect(change).toBeInstanceOf(CandidatesChange);
-      }
-    });
-  });
-
   describe('enter', () => {
     it('creates value change for =N', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
-      // First init so cells have candidates
-      const batches = puzzle.buildInitChanges();
-      for (const batch of batches) {
-        puzzle.applyChanges(batch);
-        puzzle.commit();
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
+      // Set up candidates directly
+      for (const cell of puzzle.cells) {
+        cell.setCandidates([1, 2, 3, 4]);
       }
       puzzle.enter('A1:=3');
-      // Commit so changes are applied
       puzzle.commit();
       expect(puzzle.getCell('A1').value).toBe(3);
     });
 
     it('creates candidates change for digits', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       puzzle.enter('A1:123');
       puzzle.commit();
       expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2, 3]);
     });
 
     it('creates strikethrough change for -digits', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       // Set up candidates first
       puzzle.enter('A1:1234');
       puzzle.commit();
@@ -114,7 +99,7 @@ describe('Puzzle', () => {
     });
 
     it('creates clearance change for x', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       puzzle.enter('A1:=3');
       puzzle.commit();
       puzzle.enter('A1:x');
@@ -124,7 +109,7 @@ describe('Puzzle', () => {
     });
 
     it('strips comment and executes command', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       puzzle.enter('A1:123 // setting candidates');
       puzzle.commit();
       expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2, 3]);
@@ -132,7 +117,7 @@ describe('Puzzle', () => {
 
     it('includes comment in note text', () => {
       const renderer = new TrackingRenderer();
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true, undefined, undefined, undefined, renderer);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, renderer, size: 4 });
       puzzle.enter('A1:123 // setting candidates');
       puzzle.commit();
       const noted = renderer.notesBySlide.filter((n) => n === 'A1:123 // setting candidates');
@@ -140,21 +125,21 @@ describe('Puzzle', () => {
     });
 
     it('throws for comment-only input', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       expect(() => {
         puzzle.enter('// just a comment');
       }).toThrow('No commands specified');
     });
 
     it('throws for empty input', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       expect(() => {
         puzzle.enter('');
       }).toThrow('No commands specified');
     });
 
     it('throws for invalid format', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       expect(() => {
         puzzle.enter('invalid');
       }).toThrow('Invalid format');
@@ -163,7 +148,7 @@ describe('Puzzle', () => {
 
   describe('enter cell selection syntax', () => {
     it('(Row N) targets all cells in that row', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       puzzle.enter('(Row 1):1234');
       puzzle.commit();
       expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2, 3, 4]);
@@ -174,7 +159,7 @@ describe('Puzzle', () => {
     });
 
     it('(Column X) targets all cells in that column', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       puzzle.enter('(Column A):1234');
       puzzle.commit();
       expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2, 3, 4]);
@@ -185,7 +170,7 @@ describe('Puzzle', () => {
     });
 
     it('(A1..B2) targets rectangular range', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       puzzle.enter('(A1..B2):12');
       puzzle.commit();
       expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2]);
@@ -196,7 +181,7 @@ describe('Puzzle', () => {
     });
 
     it('(D4..A3) range works in reverse order', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       puzzle.enter('(D4..A3):12');
       puzzle.commit();
       expect(puzzle.getCell('A3').getCandidates()).toEqual([1, 2]);
@@ -206,7 +191,7 @@ describe('Puzzle', () => {
     });
 
     it('(@A3-B3) targets cage minus one cell', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       // Cage containing A3 = [A3, B3]
       puzzle.enter('(@A3-B3):12');
       puzzle.commit();
@@ -215,7 +200,7 @@ describe('Puzzle', () => {
     });
 
     it('(@A1-(A2)) targets cage minus multiple cells', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       // Cage containing A1 = [A1, A2], excluding A2 → only A1
       puzzle.enter('(@A1-(A2)):12');
       puzzle.commit();
@@ -224,7 +209,7 @@ describe('Puzzle', () => {
     });
 
     it('Row and Column are case-insensitive', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       puzzle.enter('(row 1):12 (COLUMN D):34');
       puzzle.commit();
       expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2]);
@@ -234,7 +219,7 @@ describe('Puzzle', () => {
     });
 
     it('throws for invalid row number', () => {
-      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
       expect(() => {
         puzzle.enter('(Row 5):12');
       }).toThrow();
@@ -244,7 +229,7 @@ describe('Puzzle', () => {
 
 describe('Cell', () => {
   it('tracks candidates correctly', () => {
-    const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
     const cell = puzzle.getCell('A1');
     cell.setCandidates([1, 2, 3]);
     expect(cell.getCandidates()).toEqual([1, 2, 3]);
@@ -255,7 +240,7 @@ describe('Cell', () => {
   });
 
   it('tracks value correctly', () => {
-    const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
     const cell = puzzle.getCell('A1');
     expect(cell.isSolved).toBe(false);
     expect(cell.value).toBeNull();
@@ -267,7 +252,7 @@ describe('Cell', () => {
   });
 
   it('has correct peers (row + column, excluding self)', () => {
-    const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
     const cell = puzzle.getCell('B2');
     // Row 2: A2, C2, D2 (3 peers) + Column B: B1, B3, B4 (3 peers) = 6
     expect(cell.peers).toHaveLength(6);
@@ -281,7 +266,7 @@ describe('tryApplyAutomatedStrategies', () => {
   ];
 
   it('returns false when no strategies apply', () => {
-    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2));
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createRerunnableStrategies(2) });
     for (const cell of puzzle.cells) {
       cell.setCandidates([1, 2]);
     }
@@ -289,7 +274,7 @@ describe('tryApplyAutomatedStrategies', () => {
   });
 
   it('applies single candidate strategy and returns true', () => {
-    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2));
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createRerunnableStrategies(2) });
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([1, 2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -300,7 +285,7 @@ describe('tryApplyAutomatedStrategies', () => {
   });
 
   it('chains multiple strategy steps until no more apply', () => {
-    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2));
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, size: 2, strategies: createRerunnableStrategies(2) });
     // A1 has single candidate → solved → peers lose that candidate → chain
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([2]);
@@ -324,7 +309,7 @@ describe('ensureLastSlide guard', () => {
   it('enter does nothing when not on last slide', () => {
     const renderer = new TrackingRenderer();
     renderer.isLastSlide = false;
-    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, undefined, renderer);
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2 });
     puzzle.enter('A1:12');
     expect(puzzle.getCell('A1').getCandidates()).toEqual([]);
     expect(renderer.slideCount).toBe(1);
@@ -333,7 +318,7 @@ describe('ensureLastSlide guard', () => {
   it('tryApplyAutomatedStrategies returns false when not on last slide', () => {
     const renderer = new TrackingRenderer();
     renderer.isLastSlide = false;
-    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2), renderer);
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2, strategies: createRerunnableStrategies(2) });
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([1, 2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -352,12 +337,10 @@ describe('slide notes tracking', () => {
 
   it('records note text on both pending and committed slides for enter+commit', () => {
     const renderer = new TrackingRenderer();
-    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, undefined, renderer);
-    // Init candidates
-    const batches = puzzle.buildInitChanges();
-    for (const batch of batches) {
-      puzzle.applyChanges(batch);
-      puzzle.commit();
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2 });
+    // Set up candidates directly
+    for (const cell of puzzle.cells) {
+      cell.setCandidates([1, 2]);
     }
 
     puzzle.enter('A1:=1');
@@ -368,9 +351,9 @@ describe('slide notes tracking', () => {
     expect(notedSlides).toHaveLength(2);
   });
 
-  it('records note text for each strategy step', () => {
+  it('records strategy-specific note for each strategy step', () => {
     const renderer = new TrackingRenderer();
-    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, createDefaultStrategies(2), renderer);
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2, strategies: createRerunnableStrategies(2) });
     puzzle.getCell('A1').setCandidates([1]);
     puzzle.getCell('B1').setCandidates([2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -378,14 +361,14 @@ describe('slide notes tracking', () => {
 
     puzzle.tryApplyAutomatedStrategies();
 
-    // 2 strategy steps (A1+B1 then A2+B2), each producing 2 slides (pending + committed)
-    const notedSlides = renderer.notesBySlide.filter((n) => n === 'Applying automated strategies');
-    expect(notedSlides).toHaveLength(4);
+    // 2 strategy steps, each producing 2 slides (pending + committed) with strategy-specific notes
+    const strategyNotes = renderer.notesBySlide.filter((n) => n.startsWith('Single candidate:'));
+    expect(strategyNotes).toHaveLength(4);
   });
 
   it('records different notes for different operations', () => {
     const renderer = new TrackingRenderer();
-    const puzzle = createTestPuzzle(2, SIZE_2_CAGES, true, undefined, undefined, undefined, renderer);
+    const puzzle = createTestPuzzle({ cages: SIZE_2_CAGES, hasOperators: true, renderer, size: 2 });
 
     puzzle.enter('A1:12');
     puzzle.commit();
@@ -401,39 +384,90 @@ describe('slide notes tracking', () => {
 });
 
 describe('initPuzzleSlides notes', () => {
-  const BATCH_1_NOTE = 'Filling all possible cell candidates';
-  const BATCH_2_NOTE = 'Filling single cell values and unique cage multisets';
-
-  it('produces 5 slides with notes on slides 1-4 when cage constraints exist', () => {
+  it('first strategy note is Filling all candidates', () => {
     const renderer = new TrackingRenderer();
-    initPuzzleSlides(renderer, 4, SIZE_4_CAGES, true, '', '', []);
+    initPuzzleSlides(renderer, 4, SIZE_4_CAGES, true, '', '', createInitialStrategies(), createRerunnableStrategies(4));
 
-    expect(renderer.slideCount).toBe(5);
-    expect(renderer.notesBySlide[0]).toBe(BATCH_1_NOTE);
-    expect(renderer.notesBySlide[1]).toBe(BATCH_1_NOTE);
-    expect(renderer.notesBySlide[2]).toBe(BATCH_2_NOTE);
-    expect(renderer.notesBySlide[3]).toBe(BATCH_2_NOTE);
-    expect(renderer.notesBySlide[4]).toBeUndefined();
+    expect(renderer.notesBySlide[0]).toBe('Filling all candidates');
+    expect(renderer.notesBySlide[1]).toBe('Filling all candidates');
   });
 
-  it('produces 3 slides with notes on slides 1-2 when no cage constraints exist', () => {
+  it('produces at least 3 slides when init strategies apply', () => {
+    const renderer = new TrackingRenderer();
+    initPuzzleSlides(renderer, 4, SIZE_4_CAGES, true, '', '', createInitialStrategies(), createRerunnableStrategies(4));
+
+    // At least FillAllCandidates fires → 1 initial + 1×2 = 3 slides minimum
+    expect(renderer.slideCount).toBeGreaterThanOrEqual(3);
+  });
+
+  it('produces 3 slides when only FillAllCandidates fires', () => {
     const cages = [
       { cells: ['A1', 'B1'] },
       { cells: ['A2', 'B2'] }
     ];
     const renderer = new TrackingRenderer();
-    initPuzzleSlides(renderer, 2, cages, false, '', '', []);
+    initPuzzleSlides(renderer, 2, cages, false, '', '', createInitialStrategies(), createRerunnableStrategies(2));
 
     expect(renderer.slideCount).toBe(3);
-    expect(renderer.notesBySlide[0]).toBe(BATCH_1_NOTE);
-    expect(renderer.notesBySlide[1]).toBe(BATCH_1_NOTE);
+    expect(renderer.notesBySlide[0]).toBe('Filling all candidates');
+    expect(renderer.notesBySlide[1]).toBe('Filling all candidates');
     expect(renderer.notesBySlide[2]).toBeUndefined();
+  });
+});
+
+describe('enter validation', () => {
+  it('throws when value exceeds grid size', () => {
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
+    expect(() => {
+      puzzle.enter('A1:=5');
+    }).toThrow('Value 5 exceeds grid size 4');
+  });
+
+  it('throws when candidate exceeds grid size', () => {
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
+    expect(() => {
+      puzzle.enter('A1:125');
+    }).toThrow('Value 5 exceeds grid size 4');
+  });
+
+  it('throws when strikethrough value exceeds grid size', () => {
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
+    expect(() => {
+      puzzle.enter('A1:-56');
+    }).toThrow('Value 5 exceeds grid size 4');
+  });
+
+  it('throws when value conflicts with peer', () => {
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
+    puzzle.getCell('B1').setValue(3);
+    expect(() => {
+      puzzle.enter('A1:=3');
+    }).toThrow('A1 = 3 conflicts with B1 which is already 3');
+  });
+
+  it('throws when value makes completed cage invalid', () => {
+    // Cage {A1, A2} +3, cells in same column so no peer conflict with different values
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
+    puzzle.getCell('A1').setValue(1);
+    // A1=1, setting A2=4 → sum=5≠3, cage invalid
+    expect(() => {
+      puzzle.enter('A2:=4');
+    }).toThrow('makes cage @A1 invalid');
+  });
+
+  it('allows valid value that completes cage correctly', () => {
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
+    puzzle.getCell('A1').setValue(1);
+    // A1=1, setting A2=2 → sum=3 ✓
+    expect(() => {
+      puzzle.enter('A2:=2');
+    }).not.toThrow();
   });
 });
 
 describe('CellChange subclasses', () => {
   it('CandidatesChange sets candidates and clears value', () => {
-    const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
     const cell = puzzle.getCell('A1');
     cell.setValue(5);
     const change = new CandidatesChange(cell, [1, 2, 3]);
@@ -443,7 +477,7 @@ describe('CellChange subclasses', () => {
   });
 
   it('CandidatesStrikethrough removes specific candidates', () => {
-    const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
     const cell = puzzle.getCell('A1');
     cell.setCandidates([1, 2, 3, 4]);
     const change = new CandidatesStrikethrough(cell, [2, 4]);
@@ -452,7 +486,7 @@ describe('CellChange subclasses', () => {
   });
 
   it('CellClearance clears value and candidates', () => {
-    const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
     const cell = puzzle.getCell('A1');
     cell.setValue(5);
     cell.setCandidates([1, 2]);
@@ -463,7 +497,7 @@ describe('CellChange subclasses', () => {
   });
 
   it('ValueChange sets value and clears candidates', () => {
-    const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+    const puzzle = createTestPuzzle({ cages: SIZE_4_CAGES, hasOperators: true, size: 4 });
     const cell = puzzle.getCell('A1');
     cell.setCandidates([1, 2, 3]);
     const change = new ValueChange(cell, 5);

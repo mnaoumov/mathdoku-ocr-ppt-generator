@@ -4,79 +4,92 @@ import {
   it
 } from 'vitest';
 
-import { buildCageConstraintChanges } from '../src/cageConstraints.ts';
-import { CandidatesChange } from '../src/cellChanges/CandidatesChange.ts';
-import { CandidatesStrikethrough } from '../src/cellChanges/CandidatesStrikethrough.ts';
-import { ValueChange } from '../src/cellChanges/ValueChange.ts';
-import { ensureNonNullable } from '../src/typeGuards.ts';
+import {
+  collectCageTuples,
+  computeValidCageTuples
+} from '../src/cageConstraints.ts';
 import { createTestPuzzle } from './puzzleTestHelper.ts';
 
-describe('buildCageConstraintChanges', () => {
-  it('sets value for single-cell cages', () => {
+describe('computeValidCageTuples', () => {
+  it('computes addition tuples for a 2-cell cage', () => {
     const cages = [
-      { cells: ['A1'], value: 3 },
-      { cells: ['A2', 'B2'], operator: '+', value: 5 },
-      { cells: ['B1'], value: 2 }
-    ];
-    const puzzle = createTestPuzzle(2, cages, true);
-    const changes = buildCageConstraintChanges(puzzle.cages, true, 2);
-    const valueChanges = changes.filter((c) => c instanceof ValueChange);
-    expect(valueChanges.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it('produces strikethrough changes for peers of set values', () => {
-    const cages = [
-      { cells: ['A1'], value: 1 },
-      { cells: ['A2', 'B2'], operator: '+', value: 3 },
-      { cells: ['B1'], value: 2 }
-    ];
-    const puzzle = createTestPuzzle(2, cages, true);
-    const changes = buildCageConstraintChanges(puzzle.cages, true, 2);
-    const strikethroughChanges = changes.filter((c) => c instanceof CandidatesStrikethrough);
-    expect(strikethroughChanges.length).toBeGreaterThan(0);
-  });
-
-  it('orders changes as values first, then candidates, then strikethroughs', () => {
-    const cages = [
-      { cells: ['A1'], value: 3 },
-      { cells: ['A2', 'B2'], operator: '+', value: 5 },
-      { cells: ['B1'], value: 2 }
-    ];
-    const puzzle = createTestPuzzle(2, cages, true);
-    const changes = buildCageConstraintChanges(puzzle.cages, true, 2);
-    // Find first occurrence index of each type
-    const firstValue = changes.findIndex((c) => c instanceof ValueChange);
-    const firstCandidates = changes.findIndex((c) => c instanceof CandidatesChange);
-    const firstStrike = changes.findIndex((c) => c instanceof CandidatesStrikethrough);
-    if (firstValue >= 0 && firstStrike >= 0) {
-      expect(firstValue).toBeLessThan(firstStrike);
-    }
-    if (firstCandidates >= 0 && firstStrike >= 0) {
-      expect(firstCandidates).toBeLessThan(firstStrike);
-    }
-  });
-
-  it('narrows candidates when all tuples share the same value set', () => {
-    // A 2-cell cage with + and value 3 in a size-4 grid: [1,2] and [2,1] => both use {1,2}
-    const fullCages = [
       { cells: ['A1', 'B1'], operator: '+', value: 3 },
-      { cells: ['C1', 'D1'], operator: '+', value: 7 },
-      { cells: ['A2', 'B2'], operator: '+', value: 7 },
-      { cells: ['C2', 'D2'], operator: '+', value: 3 },
-      { cells: ['A3', 'B3'], operator: '+', value: 5 },
-      { cells: ['C3', 'D3'], operator: '+', value: 5 },
-      { cells: ['A4', 'B4'], operator: '+', value: 5 },
-      { cells: ['C4', 'D4'], operator: '+', value: 5 }
+      { cells: ['A2', 'B2'], operator: '+', value: 3 }
     ];
-    const puzzle = createTestPuzzle(4, fullCages, true);
-    const changes = buildCageConstraintChanges(puzzle.cages, true, 4);
-    const candidateChanges = changes.filter((c) => c instanceof CandidatesChange);
-    // The cage [A1,B1] with + and value 3 has tuples [1,2] and [2,1] => both use {1,2}
-    // So cells A1 and B1 should get CandidatesChange with [1,2]
-    const a1Changes = candidateChanges.filter((c) => c.cell.ref === 'A1');
-    if (a1Changes.length > 0) {
-      const candChange = ensureNonNullable(a1Changes[0]);
-      expect(candChange.values).toEqual([1, 2]);
-    }
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
+    const cage = puzzle.getCage(1);
+    const tuples = computeValidCageTuples(3, '+', cage.cells, 2);
+    expect(tuples).toEqual([[1, 2], [2, 1]]);
+  });
+
+  it('computes multiplication tuples for a 2-cell cage', () => {
+    const cages = [
+      { cells: ['A1', 'B1'], operator: 'x', value: 6 },
+      { cells: ['A2', 'B2'], operator: 'x', value: 6 },
+      { cells: ['A3', 'B3'], operator: '+', value: 5 },
+      { cells: ['C1', 'C2', 'C3'], operator: '+', value: 6 }
+    ];
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 3 });
+    const cage = puzzle.getCage(1);
+    const tuples = computeValidCageTuples(6, 'x', cage.cells, 3);
+    expect(tuples).toEqual([[2, 3], [3, 2]]);
+  });
+
+  it('respects row/column constraints between cells', () => {
+    const cages = [
+      { cells: ['A1', 'A2'], operator: '+', value: 3 },
+      { cells: ['B1', 'B2'], operator: '+', value: 3 }
+    ];
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
+    const cage = puzzle.getCage(1);
+    // A1 and A2 are in the same column, so they can't have the same value
+    const tuples = computeValidCageTuples(2, '+', cage.cells, 2);
+    // [1,1] would violate column constraint
+    expect(tuples).toEqual([]);
+  });
+});
+
+describe('collectCageTuples', () => {
+  it('uses specified operator when hasOperators is true', () => {
+    const cages = [
+      { cells: ['A1', 'B1'], operator: '+', value: 3 },
+      { cells: ['A2', 'B2'], operator: '+', value: 3 }
+    ];
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
+    const cage = puzzle.getCage(1);
+    const tuples = collectCageTuples(3, cage, true, 2);
+    expect(tuples).toEqual([[1, 2], [2, 1]]);
+  });
+
+  it('tries all operators when hasOperators is false', () => {
+    const cages = [
+      { cells: ['A1', 'B1'], value: 3 },
+      { cells: ['A2', 'B2'], value: 3 }
+    ];
+    const puzzle = createTestPuzzle({ cages, hasOperators: false, size: 2 });
+    const cage = puzzle.getCage(1);
+    const tuples = collectCageTuples(3, cage, false, 2);
+    // + gives (1,2),(2,1); - gives (1,2) doesn't work (|1-2|=1≠3), but for size 2 nothing else
+    // X gives nothing (1*2=2≠3, 2*1=2≠3); / gives nothing
+    // So only + tuples: [1,2],[2,1]
+    expect(tuples).toEqual([[1, 2], [2, 1]]);
+  });
+
+  it('deduplicates tuples across operators', () => {
+    const cages = [
+      { cells: ['A1', 'B1'], value: 2 },
+      { cells: ['A2', 'B2'], value: 2 }
+    ];
+    const puzzle = createTestPuzzle({ cages, hasOperators: false, size: 2 });
+    const cage = puzzle.getCage(1);
+    const tuples = collectCageTuples(2, cage, false, 2);
+    // + gives nothing (1+1=2 but same column); - gives (1,2)→|diff|≠2 in size 2...
+    // Actually: - means |a-b|=2, with size 2: |1-2|=1≠2, |2-1|=1≠2 → nothing
+    // X gives (1,2)→2, (2,1)→2 → both valid
+    // / gives (1,2)→0.5≠2, (2,1)→2 → [2,1] valid
+    // So [1,2],[2,1] from x, and [2,1] from / (but already seen)
+    const keys = tuples.map((t) => t.join(','));
+    const uniqueKeys = new Set(keys);
+    expect(uniqueKeys.size).toBe(tuples.length);
   });
 });

@@ -1,17 +1,25 @@
-import type { CellChange } from '../cellChanges/CellChange.ts';
 import type {
   Cell,
   CellValueSetter,
   House,
   Puzzle
 } from '../Puzzle.ts';
-import type { Strategy } from './Strategy.ts';
+import type {
+  Strategy,
+  StrategyResult
+} from './Strategy.ts';
 
 import { buildAutoEliminateChanges } from '../cageConstraints.ts';
 
+interface HiddenSingleFound {
+  readonly cell: Cell;
+  readonly house: House;
+  readonly value: number;
+}
+
 export class HiddenSingleStrategy implements Strategy {
-  public tryApply(puzzle: Puzzle): CellChange[] | null {
-    const results: CellValueSetter[] = [];
+  public tryApply(puzzle: Puzzle): null | StrategyResult {
+    const results: HiddenSingleFound[] = [];
     const seen = new Set<Cell>();
 
     for (const house of puzzle.houses) {
@@ -21,13 +29,21 @@ export class HiddenSingleStrategy implements Strategy {
     if (results.length === 0) {
       return null;
     }
-    return buildAutoEliminateChanges(results);
+
+    const valueSetters: CellValueSetter[] = results.map((r) => ({ cell: r.cell, value: r.value }));
+    const noteEntries = results.map(
+      (r) => `${r.cell.ref} (${r.house.type} ${r.house.label})`
+    );
+    return {
+      changes: buildAutoEliminateChanges(valueSetters),
+      note: `Hidden single: ${noteEntries.join(', ')}`
+    };
   }
 
   private scanHouse(
     puzzle: Puzzle,
     house: House,
-    results: CellValueSetter[],
+    results: HiddenSingleFound[],
     seen: Set<Cell>
   ): void {
     for (let hiddenCandidate = 1; hiddenCandidate <= puzzle.size; hiddenCandidate++) {
@@ -43,7 +59,7 @@ export class HiddenSingleStrategy implements Strategy {
         }
       }
       if (count === 1 && foundCell && !seen.has(foundCell)) {
-        results.push({ cell: foundCell, value: hiddenCandidate });
+        results.push({ cell: foundCell, house, value: hiddenCandidate });
         seen.add(foundCell);
       }
     }

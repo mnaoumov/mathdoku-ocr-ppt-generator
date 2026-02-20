@@ -17,8 +17,7 @@ describe('HiddenSingleStrategy', () => {
       { cells: ['A1', 'B1'], operator: '+', value: 3 },
       { cells: ['A2', 'B2'], operator: '+', value: 3 }
     ];
-    const puzzle = createTestPuzzle(2, cages, true);
-    // Both cells in each row have both candidates
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
     for (const cell of puzzle.cells) {
       cell.setCandidates([1, 2]);
     }
@@ -30,9 +29,7 @@ describe('HiddenSingleStrategy', () => {
       { cells: ['A1', 'B1'], operator: '+', value: 3 },
       { cells: ['A2', 'B2'], operator: '+', value: 3 }
     ];
-    const puzzle = createTestPuzzle(2, cages, true);
-    // In row 1: A1 has [1,2], B1 has [2] only
-    // Digit 1 only in A1 in row 1 → hidden single
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
     puzzle.getCell('A1').setCandidates([1, 2]);
     puzzle.getCell('B1').setCandidates([2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
@@ -40,9 +37,11 @@ describe('HiddenSingleStrategy', () => {
 
     const result = strategy.tryApply(puzzle);
     expect(result).not.toBeNull();
-    const valueChanges = ensureNonNullable(result).filter((c) => c instanceof ValueChange);
-    // A1 should be set to 1 (hidden single in row 1)
+    const { changes, note } = ensureNonNullable(result);
+    const valueChanges = changes.filter((c) => c instanceof ValueChange);
     expect(valueChanges.some((c) => c.cell.ref === 'A1' && c.value === 1)).toBe(true);
+    expect(note).toContain('Hidden single:');
+    expect(note).toContain('A1');
   });
 
   it('skips solved cells', () => {
@@ -50,16 +49,13 @@ describe('HiddenSingleStrategy', () => {
       { cells: ['A1', 'B1'], operator: '+', value: 3 },
       { cells: ['A2', 'B2'], operator: '+', value: 3 }
     ];
-    const puzzle = createTestPuzzle(2, cages, true);
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, size: 2 });
     puzzle.getCell('A1').setValue(1);
     puzzle.getCell('B1').setCandidates([2]);
     puzzle.getCell('A2').setCandidates([1, 2]);
     puzzle.getCell('B2').setCandidates([1, 2]);
 
     const result = strategy.tryApply(puzzle);
-    // B1 has single candidate [2] but that's SingleCandidate, not HiddenSingle
-    // HiddenSingle looks for a digit in only one cell in a house
-    // Since A1 is solved, in row 1 only B1 is unsolved with candidate 2 → hidden single for 2
     expect(result).not.toBeNull();
   });
 });

@@ -66,34 +66,6 @@ export function buildAutoEliminateChanges(
   return changes;
 }
 
-export function buildCageConstraintChanges(
-  cages: readonly Cage[],
-  hasOperators: boolean,
-  gridSize: number
-): CellChange[] {
-  const valueSetters: CellValueSetter[] = [];
-  const candidateChanges: CellChange[] = [];
-  for (const cage of cages) {
-    if (cage.cells.length === 1) {
-      const cellValue = cage.value ?? (cage.label ? parseInt(cage.label, 10) : undefined);
-      if (cellValue !== undefined && !isNaN(cellValue)) {
-        valueSetters.push({ cell: ensureNonNullable(cage.cells[0]), value: cellValue });
-      }
-      continue;
-    }
-
-    applyCageConstraint(cage, hasOperators, gridSize, valueSetters, candidateChanges);
-  }
-
-  const valuedCells = new Set(valueSetters.map((s) => s.cell));
-  const autoChanges = buildAutoEliminateChanges(valueSetters);
-  const valueChanges = autoChanges.filter((c) => c instanceof ValueChange);
-  const strikethroughChanges = autoChanges.filter(
-    (c) => c instanceof CandidatesStrikethrough && !valuedCells.has(c.cell)
-  );
-  return [...valueChanges, ...candidateChanges, ...strikethroughChanges];
-}
-
 export function collectCageTuples(
   cageValue: number,
   cage: Cage,

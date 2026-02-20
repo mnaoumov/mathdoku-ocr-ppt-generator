@@ -6,6 +6,16 @@ import type { Strategy } from '../src/strategies/Strategy.ts';
 
 import { Puzzle } from '../src/Puzzle.ts';
 
+export interface CreateTestPuzzleOptions {
+  readonly cages: readonly CageRaw[];
+  readonly hasOperators: boolean;
+  readonly initialCandidates?: Map<string, Set<number>>;
+  readonly initialValues?: Map<string, number>;
+  readonly renderer?: PuzzleRenderer;
+  readonly size: number;
+  readonly strategies?: readonly Strategy[];
+}
+
 export class TrackingRenderer implements PuzzleRenderer {
   public isLastSlide = true;
   public readonly notesBySlide: string[] = [];
@@ -57,24 +67,17 @@ export class TrackingRenderer implements PuzzleRenderer {
   }
 }
 
-export function createTestPuzzle(
-  size: number,
-  cages: readonly CageRaw[],
-  hasOperators: boolean,
-  initialValues?: Map<string, number>,
-  initialCandidates?: Map<string, Set<number>>,
-  strategies?: readonly Strategy[],
-  renderer: PuzzleRenderer = new TrackingRenderer()
-): Puzzle {
+export function createTestPuzzle(options: CreateTestPuzzleOptions): Puzzle {
+  const renderer = options.renderer ?? new TrackingRenderer();
   return new Puzzle(
     renderer,
-    size,
-    cages,
-    hasOperators,
+    options.size,
+    options.cages,
+    options.hasOperators,
     'Test Puzzle',
     'test',
-    strategies ?? [],
-    initialValues,
-    initialCandidates
+    options.strategies ?? [],
+    options.initialValues,
+    options.initialCandidates
   );
 }
