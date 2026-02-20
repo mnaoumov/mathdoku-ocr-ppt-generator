@@ -5,9 +5,9 @@ import {
 } from 'vitest';
 
 import {
-  computeGridBoundaries,
   evaluateTuple,
-  generateSubsets
+  generateSubsets,
+  GridBoundaries
 } from '../src/combinatorics.ts';
 
 describe('evaluateTuple', () => {
@@ -83,18 +83,34 @@ describe('generateSubsets', () => {
   });
 });
 
-describe('computeGridBoundaries', () => {
-  it('computes boundaries for a 2x2 grid with 2 cages', () => {
-    const cages = [
-      { cells: ['A1', 'A2'], value: 3 },
-      { cells: ['B1', 'B2'], value: 3 }
-    ];
-    const { horizontalBounds, verticalBounds } = computeGridBoundaries(cages, 2);
-    // A1=(r0,c0) A2=(r1,c0) are same cage; B1=(r0,c1) B2=(r1,c1) same cage
-    // Vertical bound at r=0,c=1: cage of (r0,c0)=0 vs cage of (r0,c1)=1 => true
-    expect(verticalBounds[0]).toEqual([true]);
-    expect(verticalBounds[1]).toEqual([true]);
-    // Horizontal bound at r=1: cage of (r0,c0)=0 vs cage of (r1,c0)=0 => false
-    expect(horizontalBounds[0]).toEqual([false, false]);
+describe('GridBoundaries', () => {
+  // 2x2 grid: cage 1 = [A1, A2] (col 1), cage 2 = [B1, B2] (col 2)
+  const cages = [
+    { cells: ['A1', 'A2'], value: 3 },
+    { cells: ['B1', 'B2'], value: 3 }
+  ];
+  const boundaries = new GridBoundaries(cages, 2);
+
+  it('detects internal vertical boundary between cages', () => {
+    expect(boundaries.hasRightBound(1, 1)).toBe(true);
+    expect(boundaries.hasLeftBound(1, 2)).toBe(true);
+    expect(boundaries.hasRightBound(2, 1)).toBe(true);
+    expect(boundaries.hasLeftBound(2, 2)).toBe(true);
+  });
+
+  it('detects no internal horizontal boundary within same cage', () => {
+    expect(boundaries.hasBottomBound(1, 1)).toBe(false);
+    expect(boundaries.hasTopBound(2, 1)).toBe(false);
+    expect(boundaries.hasBottomBound(1, 2)).toBe(false);
+    expect(boundaries.hasTopBound(2, 2)).toBe(false);
+  });
+
+  it('returns true for all outer edges', () => {
+    expect(boundaries.hasTopBound(1, 1)).toBe(true);
+    expect(boundaries.hasLeftBound(1, 1)).toBe(true);
+    expect(boundaries.hasBottomBound(2, 1)).toBe(true);
+    expect(boundaries.hasRightBound(1, 2)).toBe(true);
+    expect(boundaries.hasBottomBound(2, 2)).toBe(true);
+    expect(boundaries.hasRightBound(2, 2)).toBe(true);
   });
 });

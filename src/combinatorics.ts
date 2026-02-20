@@ -3,41 +3,73 @@ import type { CageRaw } from './Puzzle.ts';
 import { getCellRef } from './parsers.ts';
 import { ensureNonNullable } from './typeGuards.ts';
 
-export interface GridBoundaries {
-  readonly horizontalBounds: readonly (readonly boolean[])[];
-  readonly verticalBounds: readonly (readonly boolean[])[];
-}
-
 const BINARY_OP_SIZE = 2;
 const FIRST_INNER_BOUNDARY_ID = 2;
 
-export function computeGridBoundaries(cages: readonly CageRaw[], puzzleSize: number): GridBoundaries {
-  const cellToCage: Record<string, number> = {};
-  for (let cageId = 1; cageId <= cages.length; cageId++) {
-    const cage = ensureNonNullable(cages[cageId - 1]);
-    for (const cell of cage.cells) {
-      cellToCage[cell] = cageId;
+export class GridBoundaries {
+  private readonly horizontalBounds: boolean[][];
+  private readonly puzzleSize: number;
+  private readonly verticalBounds: boolean[][];
+
+  public constructor(cages: readonly CageRaw[], puzzleSize: number) {
+    this.puzzleSize = puzzleSize;
+
+    const cellToCage: Record<string, number> = {};
+    for (let cageId = 1; cageId <= cages.length; cageId++) {
+      const cage = ensureNonNullable(cages[cageId - 1]);
+      for (const cell of cage.cells) {
+        cellToCage[cell] = cageId;
+      }
     }
+
+    const verticalBounds: boolean[][] = [];
+    const horizontalBounds: boolean[][] = [];
+    for (let rowId = 1; rowId <= puzzleSize; rowId++) {
+      const row: boolean[] = [];
+      verticalBounds[rowId - 1] = row;
+      for (let columnId = FIRST_INNER_BOUNDARY_ID; columnId <= puzzleSize; columnId++) {
+        row[columnId - FIRST_INNER_BOUNDARY_ID] = cellToCage[getCellRef(rowId, columnId - 1)] !== cellToCage[getCellRef(rowId, columnId)];
+      }
+    }
+    for (let rowId = FIRST_INNER_BOUNDARY_ID; rowId <= puzzleSize; rowId++) {
+      const row: boolean[] = [];
+      horizontalBounds[rowId - FIRST_INNER_BOUNDARY_ID] = row;
+      for (let columnId = 1; columnId <= puzzleSize; columnId++) {
+        row[columnId - 1] = cellToCage[getCellRef(rowId - 1, columnId)] !== cellToCage[getCellRef(rowId, columnId)];
+      }
+    }
+
+    this.verticalBounds = verticalBounds;
+    this.horizontalBounds = horizontalBounds;
   }
 
-  const verticalBounds: boolean[][] = [];
-  const horizontalBounds: boolean[][] = [];
-  for (let rowId = 1; rowId <= puzzleSize; rowId++) {
-    const row: boolean[] = [];
-    verticalBounds[rowId - 1] = row;
-    for (let columnId = FIRST_INNER_BOUNDARY_ID; columnId <= puzzleSize; columnId++) {
-      row[columnId - FIRST_INNER_BOUNDARY_ID] = cellToCage[getCellRef(rowId, columnId - 1)] !== cellToCage[getCellRef(rowId, columnId)];
+  public hasBottomBound(rowId: number, columnId: number): boolean {
+    if (rowId >= this.puzzleSize) {
+      return true;
     }
-  }
-  for (let rowId = FIRST_INNER_BOUNDARY_ID; rowId <= puzzleSize; rowId++) {
-    const row: boolean[] = [];
-    horizontalBounds[rowId - FIRST_INNER_BOUNDARY_ID] = row;
-    for (let columnId = 1; columnId <= puzzleSize; columnId++) {
-      row[columnId - 1] = cellToCage[getCellRef(rowId - 1, columnId)] !== cellToCage[getCellRef(rowId, columnId)];
-    }
+    return ensureNonNullable(ensureNonNullable(this.horizontalBounds[rowId - 1])[columnId - 1]);
   }
 
-  return { horizontalBounds, verticalBounds };
+  public hasLeftBound(rowId: number, columnId: number): boolean {
+    if (columnId <= 1) {
+      return true;
+    }
+    return ensureNonNullable(ensureNonNullable(this.verticalBounds[rowId - 1])[columnId - FIRST_INNER_BOUNDARY_ID]);
+  }
+
+  public hasRightBound(rowId: number, columnId: number): boolean {
+    if (columnId >= this.puzzleSize) {
+      return true;
+    }
+    return ensureNonNullable(ensureNonNullable(this.verticalBounds[rowId - 1])[columnId - 1]);
+  }
+
+  public hasTopBound(rowId: number, columnId: number): boolean {
+    if (rowId <= 1) {
+      return true;
+    }
+    return ensureNonNullable(ensureNonNullable(this.horizontalBounds[rowId - FIRST_INNER_BOUNDARY_ID])[columnId - 1]);
+  }
 }
 
 export function evaluateTuple(tuple: readonly number[], operator: string): null | number {
