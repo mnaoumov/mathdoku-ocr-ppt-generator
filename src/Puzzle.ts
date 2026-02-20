@@ -420,13 +420,49 @@ export class Puzzle {
     return changes;
   }
 
+  private parseCageExclusion(anchorRef: string, exclusionPart: string): Cell[] {
+    const anchor = this.getCell(anchorRef);
+    const cageCells = [...anchor.cage.cells];
+    const trimmed = exclusionPart.trim();
+    const exclusionRefs = trimmed.startsWith('(') && trimmed.endsWith(')')
+      ? trimmed.substring(1, trimmed.length - 1).trim().split(/\s+/)
+      : [trimmed];
+    const excludedCells = new Set(exclusionRefs.map((ref) => this.getCell(ref)));
+    return cageCells.filter((cell) => !excludedCells.has(cell));
+  }
+
   private parseCellPart(cellPart: string): Cell[] {
     let inner = cellPart;
     if (inner.startsWith('(') && inner.endsWith(')')) {
       inner = inner.substring(1, inner.length - 1);
     }
+    const trimmed = inner.trim();
+
+    const rowMatch = /^Row\s+(?<id>\d+)$/i.exec(trimmed);
+    if (rowMatch) {
+      return [...this.getRow(parseInt(ensureNonNullable(ensureNonNullable(rowMatch.groups)['id']), 10)).cells];
+    }
+
+    const columnMatch = /^Column\s+(?<col>[A-Za-z])$/i.exec(trimmed);
+    if (columnMatch) {
+      const colId = ensureNonNullable(ensureNonNullable(columnMatch.groups)['col']).toUpperCase().charCodeAt(0) - CHAR_CODE_A + 1;
+      return [...this.getColumn(colId).cells];
+    }
+
+    const rangeMatch = /^(?<start>[A-Za-z]\d+)\.\.(?<end>[A-Za-z]\d+)$/.exec(trimmed);
+    if (rangeMatch) {
+      const groups = ensureNonNullable(rangeMatch.groups);
+      return this.parseCellRange(ensureNonNullable(groups['start']), ensureNonNullable(groups['end']));
+    }
+
+    const cageExclMatch = /^@(?<anchor>[A-Za-z]\d+)-(?<exclusion>.+)$/.exec(trimmed);
+    if (cageExclMatch) {
+      const groups = ensureNonNullable(cageExclMatch.groups);
+      return this.parseCageExclusion(ensureNonNullable(groups['anchor']), ensureNonNullable(groups['exclusion']));
+    }
+
     const cells: Cell[] = [];
-    for (const token of inner.trim().split(/\s+/)) {
+    for (const token of trimmed.split(/\s+/)) {
       if (token.startsWith('@')) {
         const anchor = this.getCell(token.substring(1));
         for (const cell of anchor.cage.cells) {
@@ -439,15 +475,31 @@ export class Puzzle {
     return cells;
   }
 
+  private parseCellRange(startRef: string, endRef: string): Cell[] {
+    const start = parseCellRef(startRef);
+    const end = parseCellRef(endRef);
+    const minRow = Math.min(start.rowId, end.rowId);
+    const maxRow = Math.max(start.rowId, end.rowId);
+    const minCol = Math.min(start.columnId, end.columnId);
+    const maxCol = Math.max(start.columnId, end.columnId);
+    const cells: Cell[] = [];
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        cells.push(this.getCell(r, c));
+      }
+    }
+    return cells;
+  }
+
   private parseInput(input: string): EnterCommand[] {
     const trimmed = input.trim();
     if (!trimmed) {
       throw new Error('No commands specified');
     }
-    const pattern = /(?:\([^)]+\)|@?[A-Za-z]\d+):[^\s]+/g;
+    const pattern = /(?:\([^)]*(?:\([^)]*\)[^)]*)*\)|@[A-Za-z]\d+|[A-Za-z]\d+):[^\s]+/g;
     const matches = trimmed.match(pattern);
     if (!matches || matches.length === 0) {
-      throw new Error('Invalid format. Expected: A1:=1, A1:234, (B2 C3):-567, @D4:234');
+      throw new Error('Invalid format. Expected: A1:=1, (Row 3):-12, (Column A):34, (A1..D4):-3, (@D4-A1):234');
     }
     const commands: EnterCommand[] = [];
     for (const match of matches) {

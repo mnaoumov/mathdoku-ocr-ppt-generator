@@ -160,6 +160,86 @@ describe('Puzzle', () => {
       }).toThrow('Invalid format');
     });
   });
+
+  describe('enter cell selection syntax', () => {
+    it('(Row N) targets all cells in that row', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      puzzle.enter('(Row 1):1234');
+      puzzle.commit();
+      expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2, 3, 4]);
+      expect(puzzle.getCell('B1').getCandidates()).toEqual([1, 2, 3, 4]);
+      expect(puzzle.getCell('C1').getCandidates()).toEqual([1, 2, 3, 4]);
+      expect(puzzle.getCell('D1').getCandidates()).toEqual([1, 2, 3, 4]);
+      expect(puzzle.getCell('A2').getCandidates()).toEqual([]);
+    });
+
+    it('(Column X) targets all cells in that column', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      puzzle.enter('(Column A):1234');
+      puzzle.commit();
+      expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2, 3, 4]);
+      expect(puzzle.getCell('A2').getCandidates()).toEqual([1, 2, 3, 4]);
+      expect(puzzle.getCell('A3').getCandidates()).toEqual([1, 2, 3, 4]);
+      expect(puzzle.getCell('A4').getCandidates()).toEqual([1, 2, 3, 4]);
+      expect(puzzle.getCell('B1').getCandidates()).toEqual([]);
+    });
+
+    it('(A1..B2) targets rectangular range', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      puzzle.enter('(A1..B2):12');
+      puzzle.commit();
+      expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('B1').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('A2').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('B2').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('C1').getCandidates()).toEqual([]);
+    });
+
+    it('(D4..A3) range works in reverse order', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      puzzle.enter('(D4..A3):12');
+      puzzle.commit();
+      expect(puzzle.getCell('A3').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('D4').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('B3').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('C4').getCandidates()).toEqual([1, 2]);
+    });
+
+    it('(@A3-B3) targets cage minus one cell', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      // Cage containing A3 = [A3, B3]
+      puzzle.enter('(@A3-B3):12');
+      puzzle.commit();
+      expect(puzzle.getCell('A3').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('B3').getCandidates()).toEqual([]);
+    });
+
+    it('(@A1-(A2)) targets cage minus multiple cells', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      // Cage containing A1 = [A1, A2], excluding A2 → only A1
+      puzzle.enter('(@A1-(A2)):12');
+      puzzle.commit();
+      expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2]);
+      expect(puzzle.getCell('A2').getCandidates()).toEqual([]);
+    });
+
+    it('Row and Column are case-insensitive', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      puzzle.enter('(row 1):12 (COLUMN D):34');
+      puzzle.commit();
+      expect(puzzle.getCell('A1').getCandidates()).toEqual([1, 2]);
+      // D1 is in both row 1 and column D; second command overwrites
+      expect(puzzle.getCell('D1').getCandidates()).toEqual([3, 4]);
+      expect(puzzle.getCell('D3').getCandidates()).toEqual([3, 4]);
+    });
+
+    it('throws for invalid row number', () => {
+      const puzzle = createTestPuzzle(4, SIZE_4_CAGES, true);
+      expect(() => {
+        puzzle.enter('(Row 5):12');
+      }).toThrow();
+    });
+  });
 });
 
 describe('Cell', () => {

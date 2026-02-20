@@ -51,7 +51,15 @@ The Apps Script code follows an MVC pattern:
 Flow:
 1. **Enter**: Opens modal dialog. User input parsed by `Puzzle.buildEnterChanges()`. Changes rendered in green via `renderPendingChanges` (duplicates slide first, then applies green).
    - `=N` sets value, `digits` adds candidates, `-digits` strikethroughs candidates, `x` clears cell
-   - `@A1` expands to all cells in the cage containing A1
+   - Cell selection syntax (brackets optional for single cell/cage, required for groups):
+     - `D3:op` or `(D3):op` — single cell
+     - `@D3:op` or `(@D3):op` — whole cage containing D3
+     - `(A1 B2):op` — explicit cell list
+     - `(Row 3):op` — entire row (case-insensitive keyword)
+     - `(Column C):op` — entire column (case-insensitive keyword)
+     - `(A3..D4):op` — rectangular range (endpoints in any order)
+     - `(@A3-B3):op` — cage of A3 minus B3
+     - `(@A3-(B3 A4)):op` — cage of A3 minus multiple cells
    - `// comment` at end of input is stripped from execution but included in slide notes
    - Comment-only input (no commands) throws an error
 2. **Commit**: Calls `renderCommittedChanges` which duplicates slide and finalizes green changes (green→normal, strikethrough→removed).

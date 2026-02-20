@@ -24,8 +24,8 @@
 </head>
 <body>
   <label for="cmd">Commands:</label>
-  <input type="text" id="cmd" autofocus placeholder="A1:=1 (B2 C3):234 @D4:-567">
-  <div class="hint">cell:op &mdash; =N value, 123 candidates, -123 strike, x clear. @A1 expands cage.</div>
+  <input type="text" id="cmd" autofocus placeholder="A1:=1 (Row 3):-12 (A1..D4):34 (@A3-A4):56">
+  <div class="hint">cell:op &mdash; =N value, 123 candidates, -123 strike, x clear. @A1 cage, (Row N), (Column X), (A1..D4) range, (@A1-B2) cage&minus;cells.</div>
 
   <div class="buttons">
     <button onclick="google.script.host.close()">Cancel</button>
