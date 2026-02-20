@@ -33,12 +33,12 @@ async function main(): Promise<void> {
       },
       minify: false,
       outDir: DIST,
-      target: 'es2019',
       rollupOptions: {
         output: {
           entryFileNames: 'Code.js'
         }
-      }
+      },
+      target: 'es2019'
     },
     logLevel: 'info',
     plugins: [stripExports()],
