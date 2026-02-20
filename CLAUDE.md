@@ -23,13 +23,11 @@ Generate Google Slides presentations for Mathdoku puzzles that can be solved int
 
 - `scripts/makeMathdokuSlides.ts` - Slides generator: upload PPTX template, bind script, embed puzzle JSON
 - `assets/template-960x540.pptx` - Blank PPTX with 960×540 pt page size (workaround for API bug)
-- `apps-script/Puzzle.ts` - Business logic: Puzzle class, PuzzleRenderer/Strategy interfaces, types, utility functions (zero Google Slides dependencies)
-- `apps-script/View.ts` - Google Slides layer: SlidesRenderer class, layout profiles, grid rendering, importPuzzle, global entry points
-- `apps-script/SingleCandidateStrategy.ts` - Strategy: cells with exactly 1 candidate → set value
-- `apps-script/HiddenSingleStrategy.ts` - Strategy: digit in only 1 cell per row/col → set value
-- `apps-script/NakedSetStrategy.ts` - Strategy: naked set of size k → eliminate candidates
-- `apps-script/EnterDialog.html` - Modal dialog UI for Enter command
-- `apps-script/appsscript.json` - Apps Script manifest
+- `src/Puzzle.ts` - Business logic: Puzzle class, PuzzleRenderer/Strategy interfaces, `initPuzzleSlides()`, types (zero Google Slides dependencies)
+- `src/View.ts` - Google Slides layer: SlidesRenderer class, layout profiles, grid rendering, importPuzzle, global entry points
+- `src/strategies/` - Strategy implementations (SingleCandidate, HiddenSingle, NakedSet)
+- `src/cellChanges/` - CellChange subclasses (CandidatesChange, CandidatesStrikethrough, CellClearance, ValueChange)
+- `dist/EnterDialog.html` - Modal dialog UI for Enter command
 - `ocr/ocr_mathdoku.py` - OCR: uses OpenCV + Tesseract to extract puzzle from screenshot
 - `tests/fixtures/` - YAML specs and reference images for various puzzles
 
@@ -52,22 +50,35 @@ The Apps Script code follows an MVC pattern:
 
 Flow:
 1. **Enter**: Opens modal dialog. User input parsed by `Puzzle.buildEnterChanges()`. Changes rendered in green via `renderPendingChanges` (duplicates slide first, then applies green).
-   - `=N` sets value, `digits` adds candidates, `-digits` strikethroughs candidates
+   - `=N` sets value, `digits` adds candidates, `-digits` strikethroughs candidates, `x` clears cell
    - `@A1` expands to all cells in the cage containing A1
+   - `// comment` at end of input is stripped from execution but included in slide notes
+   - Comment-only input (no commands) throws an error
 2. **Commit**: Calls `renderCommittedChanges` which duplicates slide and finalizes green changes (green→normal, strikethrough→removed).
-3. **Apply Easy Strategies**: Runs strategy loop (single candidate → hidden single → naked set k=2,3,...) until no more progress.
+3. **Apply Automated Strategies** (`tryApplyAutomatedStrategies`): Runs strategy loop (single candidate → hidden single → naked set k=2,3,...) until no more progress. Returns `boolean` (true if any strategy applied).
 
-## Apps Script TypeScript
+### Slide Notes
 
-Apps Script source is in `apps-script/` as TypeScript (`.ts`). The build pushes compiled `.gs` files to the bound script project.
+Every action records its description in slide speaker notes for an audit trail:
+- **Init**: batch 1 = "Filling all possible cell candidates", batch 2 = "Filling single cell values and unique cage multisets"
+- **Enter**: the full input string (including `//` comments) is recorded
+- **Automated strategies**: "Applying automated strategies" on each step
+- Each action produces 2 slides (pending + committed), both get the note
+
+Note text is set via `PuzzleRenderer.setNoteText()` from business logic (`Puzzle.enter()`, `Puzzle.tryApplyAutomatedStrategies()`, `initPuzzleSlides()`), not from View callers.
+
+### Last Slide Guard
+
+All commands (`enter()`, `tryApplyAutomatedStrategies()`) check `PuzzleRenderer.ensureLastSlide()` before proceeding. If the user is not on the last slide, an alert is shown and the command is aborted. This prevents accidental modifications to intermediate slides. The `addChanges()` dialog opener also checks via the View-layer `ensureLastSlideSelected()`.
+
+Note: `selectAsCurrentPage()` is the only Google Slides API for navigating to a slide. It selects the slide but does not reliably scroll the thumbnail panel — this is a known editor limitation.
+
+## TypeScript
 
 ### Type Checking & Linting
 
-- `npm run check` (from project root) runs `tsc -p apps-script && tsc && eslint . && cspell .`
-- Two tsconfigs: root `tsconfig.json` (NodeNext, for tooling like `eslint.config.mts` and `scripts/`) and `apps-script/tsconfig.json` (module: "None", for Apps Script global scope)
-- **apps-script/tsconfig.json**: extends `@tsconfig/strictest` — includes `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, etc. Adapted: `module: "None"`, `isolatedModules: false`, `target: ES2020`
+- `npm run check` (from project root) runs `cspell && eslint && dprint check && tsc`
 - **eslint.config.mts** (root): based on obsidian-dev-utils strict config. Includes `typescript-eslint` strictTypeChecked + stylisticTypeChecked, `@stylistic/eslint-plugin`, `eslint-plugin-perfectionist` (alphabetical sorting), `@eslint-community/eslint-plugin-eslint-comments`
-- `@typescript-eslint/no-unused-vars` is **off** — ESLint can't see cross-file usage in Apps Script's global scope (`module: "None"`). TypeScript handles this via `noUnusedLocals`/`noUnusedParameters`.
 
 ### Coding Style
 
@@ -86,8 +97,15 @@ Apps Script source is in `apps-script/` as TypeScript (`.ts`). The build pushes 
 
 ## Testing
 
-- Existing tests (`uv run pytest`) cover OCR only. Don't run them unless OCR code changed.
-- For Slides/Apps Script changes, test manually: generate a presentation and verify in the browser.
+- `npm test` runs vitest unit tests for Puzzle logic, strategies, parsers, combinatorics, cage constraints
+- `uv run pytest` runs OCR tests. Don't run them unless OCR code changed.
+- For Google Slides rendering changes, test manually: generate a presentation and verify in the browser.
+- `TrackingRenderer` (in `__tests__/puzzleTestHelper.ts`) is the test double for `PuzzleRenderer` — tracks `notesBySlide`, `slideCount`, and has a configurable `isLastSlide` flag for guard testing.
+- `createTestPuzzle()` accepts an optional `renderer` parameter to inject a `TrackingRenderer` the test holds a reference to (avoids `as TrackingRenderer` casts).
+
+## Documentation
+
+After every confirmed change, keep this file (`CLAUDE.md`) in sync with the current design. Update relevant sections (architecture, solving workflow, testing patterns, etc.) so future sessions have accurate context.
 
 ## Dependencies
 
