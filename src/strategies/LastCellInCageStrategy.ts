@@ -70,7 +70,7 @@ export class LastCellInCageStrategy implements Strategy {
     const changes: CellChange[] = [...buildAutoEliminateChanges(valueSetters), ...eliminations];
     return {
       changes,
-      note: `Last cell in cage: ${affectedRefs.join(', ')}`
+      note: `Last cell in cage. ${affectedRefs.join(', ')}`
     };
   }
 

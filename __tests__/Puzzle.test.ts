@@ -362,7 +362,7 @@ describe('slide notes tracking', () => {
     puzzle.tryApplyAutomatedStrategies();
 
     // 2 strategy steps, each producing 2 slides (pending + committed) with strategy-specific notes
-    const strategyNotes = renderer.notesBySlide.filter((n) => n.startsWith('Single candidate:'));
+    const strategyNotes = renderer.notesBySlide.filter((n) => n.startsWith('Single candidate.'));
     expect(strategyNotes).toHaveLength(4);
   });
 

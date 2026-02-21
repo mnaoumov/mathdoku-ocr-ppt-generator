@@ -28,7 +28,7 @@ export class SingleCandidateStrategy implements Strategy {
     const cellRefs = results.map((r) => r.cell.ref).join(', ');
     return {
       changes: buildAutoEliminateChanges(results),
-      note: `Single candidate: ${cellRefs}`
+      note: `Single candidate. ${cellRefs}`
     };
   }
 }

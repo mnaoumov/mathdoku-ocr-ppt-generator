@@ -53,7 +53,7 @@ describe('NakedSetStrategy', () => {
     const eliminatedValues = c1Changes.flatMap((c) => [...c.values]);
     expect(eliminatedValues).toContain(1);
     expect(eliminatedValues).toContain(2);
-    expect(note).toContain('Naked pair:');
+    expect(note).toContain('Naked pair.');
   });
 
   it('skips solved cells', () => {

@@ -51,7 +51,7 @@ export class UniqueCageMultisetStrategy implements Strategy {
 
     return {
       changes,
-      note: `Unique cage multiset: ${affectedCageRefs.join(', ')}`
+      note: `Unique cage multiset. ${affectedCageRefs.join(', ')}`
     };
   }
 }

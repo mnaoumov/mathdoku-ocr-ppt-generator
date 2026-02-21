@@ -1,5 +1,6 @@
 import type { Strategy } from './Strategy.ts';
 
+import { DeterminedByCageStrategy } from './DeterminedByCageStrategy.ts';
 import { EliminateByOperationStrategy } from './EliminateByOperationStrategy.ts';
 import { FillAllCandidatesStrategy } from './FillAllCandidatesStrategy.ts';
 import { HiddenSingleStrategy } from './HiddenSingleStrategy.ts';
@@ -25,6 +26,7 @@ export function createStrategies(size: number): Strategy[] {
     new SingleCandidateStrategy(),
     new HiddenSingleStrategy(),
     new LastCellInCageStrategy(),
+    new DeterminedByCageStrategy(),
     ...Array.from({ length: size - MIN_NAKED_SET_SIZE }, (_, i) => new NakedSetStrategy(i + MIN_NAKED_SET_SIZE))
   ];
 }

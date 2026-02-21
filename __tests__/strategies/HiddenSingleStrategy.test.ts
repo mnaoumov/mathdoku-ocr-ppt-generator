@@ -40,7 +40,7 @@ describe('HiddenSingleStrategy', () => {
     const { changes, note } = ensureNonNullable(result);
     const valueChanges = changes.filter((c) => c instanceof ValueChange);
     expect(valueChanges.some((c) => c.cell.ref === 'A1' && c.value === 1)).toBe(true);
-    expect(note).toContain('Hidden single:');
+    expect(note).toContain('Hidden single.');
     expect(note).toContain('A1');
   });
 

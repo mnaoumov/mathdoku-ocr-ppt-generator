@@ -47,7 +47,7 @@ export class NakedSetStrategy implements Strategy {
     );
     return {
       changes,
-      note: `${name}: ${subsetDescriptions.join(', ')}`
+      note: `${name}. ${subsetDescriptions.join(', ')}`
     };
   }
 

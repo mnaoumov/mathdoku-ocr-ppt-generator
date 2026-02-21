@@ -39,7 +39,7 @@ describe('SingleCandidateStrategy', () => {
     expect(result).not.toBeNull();
     const { changes, note } = ensureNonNullable(result);
     expect(changes.some((c) => c instanceof ValueChange && c.cell.ref === 'A1' && c.value === 1)).toBe(true);
-    expect(note).toBe('Single candidate: A1');
+    expect(note).toBe('Single candidate. A1');
   });
 
   it('skips already solved cells', () => {

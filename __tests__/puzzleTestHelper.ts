@@ -67,6 +67,8 @@ export class TrackingRenderer implements PuzzleRenderer {
   }
 }
 
+const CHAR_CODE_A = 65;
+
 export function createTestPuzzle(options: CreateTestPuzzleOptions): Puzzle {
   return new Puzzle({
     cages: options.cages,
@@ -79,4 +81,23 @@ export function createTestPuzzle(options: CreateTestPuzzleOptions): Puzzle {
     ...options.initialCandidates !== undefined && { initialCandidates: options.initialCandidates },
     ...options.initialValues !== undefined && { initialValues: options.initialValues }
   });
+}
+
+export function fillRemainingCells(cages: readonly CageRaw[], puzzleSize: number): CageRaw[] {
+  const covered = new Set<string>();
+  for (const cage of cages) {
+    for (const ref of cage.cells) {
+      covered.add(ref);
+    }
+  }
+  const result = [...cages];
+  for (let row = 1; row <= puzzleSize; row++) {
+    for (let col = 1; col <= puzzleSize; col++) {
+      const ref = String.fromCharCode(CHAR_CODE_A + col - 1) + String(row);
+      if (!covered.has(ref)) {
+        result.push({ cells: [ref], value: 1 });
+      }
+    }
+  }
+  return result;
 }

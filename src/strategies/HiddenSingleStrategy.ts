@@ -32,11 +32,11 @@ export class HiddenSingleStrategy implements Strategy {
 
     const valueSetters: CellValueSetter[] = results.map((r) => ({ cell: r.cell, value: r.value }));
     const noteEntries = results.map(
-      (r) => `${r.cell.ref} (${r.house.type} ${r.house.label})`
+      (r) => `${r.cell.ref}: ${r.house.type} ${r.house.label}`
     );
     return {
       changes: buildAutoEliminateChanges(valueSetters),
-      note: `Hidden single: ${noteEntries.join(', ')}`
+      note: `Hidden single. ${noteEntries.join(', ')}`
     };
   }
 

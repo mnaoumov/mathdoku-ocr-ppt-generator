@@ -28,6 +28,6 @@ export class SingleCellCageStrategy implements Strategy {
 
     const changes = buildAutoEliminateChanges(valueSetters);
     const cellRefs = valueSetters.map((s) => s.cell.ref).join(', ');
-    return { changes, note: `Single cell: ${cellRefs}` };
+    return { changes, note: `Single cell. ${cellRefs}` };
   }
 }
