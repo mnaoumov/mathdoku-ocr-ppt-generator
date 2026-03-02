@@ -1,5 +1,4 @@
 import type {
-  Cage,
   House,
   Puzzle
 } from '../Puzzle.ts';
@@ -32,11 +31,6 @@ export class RequiredCageCandidateStrategy implements Strategy {
         continue;
       }
 
-      const sharedHouse = this.findSharedHouse(cage);
-      if (!sharedHouse) {
-        continue;
-      }
-
       const unsolvedCells = cage.cells.filter((c) => !c.isSolved);
       if (unsolvedCells.length < MINIMUM_UNSOLVED_CELLS) {
         continue;
@@ -56,24 +50,22 @@ export class RequiredCageCandidateStrategy implements Strategy {
       const requiredValues = this.findRequiredValues(validTuples, puzzle.puzzleSize);
       const cageSet = new Set(cage.cells);
       const cageRef = `@${cage.topLeft.ref}`;
-      const houseLabel = `${sharedHouse.type} ${sharedHouse.label}`;
 
       for (const value of requiredValues) {
-        const changes: CandidatesStrikethrough[] = [];
-        for (const cell of sharedHouse.cells) {
-          if (!cageSet.has(cell) && !cell.isSolved && cell.hasCandidate(value)) {
-            changes.push(new CandidatesStrikethrough(cell, [value]));
-          }
-        }
-        if (changes.length === 0) {
+        const candidateCells = unsolvedCells.filter((c) => c.hasCandidate(value));
+        if (candidateCells.length === 0) {
           continue;
         }
 
-        changes.sort((a, b) => Cell.compare(a.cell, b.cell));
-        const reason = `${cageRef} requires ${String(value)} in ${houseLabel}`;
-        allGroups.push({ changes, reason });
-        const eliminatedRefs = changes.map((c) => c.cell.ref).join(' ');
-        allNoteEntries.push(`${cageRef} -${String(value)} ${houseLabel} ${eliminatedRefs}`);
+        const firstCand = ensureNonNullable(candidateCells[0]);
+
+        if (candidateCells.every((c) => c.row === firstCand.row)) {
+          this.eliminateFromHouse(firstCand.row, value, cageSet, cageRef, allGroups, allNoteEntries);
+        }
+
+        if (candidateCells.every((c) => c.column === firstCand.column)) {
+          this.eliminateFromHouse(firstCand.column, value, cageSet, cageRef, allGroups, allNoteEntries);
+        }
       }
     }
 
@@ -87,6 +79,31 @@ export class RequiredCageCandidateStrategy implements Strategy {
     };
   }
 
+  private eliminateFromHouse(
+    house: House,
+    value: number,
+    cageSet: ReadonlySet<Cell>,
+    cageRef: string,
+    allGroups: ChangeGroup[],
+    allNoteEntries: string[]
+  ): void {
+    const changes: CandidatesStrikethrough[] = [];
+    for (const cell of house.cells) {
+      if (!cageSet.has(cell) && !cell.isSolved && cell.hasCandidate(value)) {
+        changes.push(new CandidatesStrikethrough(cell, [value]));
+      }
+    }
+    if (changes.length === 0) {
+      return;
+    }
+
+    changes.sort((a, b) => Cell.compare(a.cell, b.cell));
+    const houseLabel = `${house.type} ${house.label}`;
+    const reason = `${cageRef} requires ${String(value)} in ${houseLabel}`;
+    allGroups.push({ changes, reason });
+    allNoteEntries.push(`${cageRef} -${String(value)} ${houseLabel}`);
+  }
+
   private findRequiredValues(validTuples: readonly number[][], puzzleSize: number): number[] {
     const required: number[] = [];
     for (let value = 1; value <= puzzleSize; value++) {
@@ -95,18 +112,5 @@ export class RequiredCageCandidateStrategy implements Strategy {
       }
     }
     return required;
-  }
-
-  private findSharedHouse(cage: Cage): House | null {
-    const firstCell = ensureNonNullable(cage.cells[0]);
-
-    if (cage.cells.every((c) => c.row === firstCell.row)) {
-      return firstCell.row;
-    }
-    if (cage.cells.every((c) => c.column === firstCell.column)) {
-      return firstCell.column;
-    }
-
-    return null;
   }
 }

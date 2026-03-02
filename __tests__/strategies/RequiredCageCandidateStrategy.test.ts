@@ -88,8 +88,10 @@ describe('RequiredCageCandidateStrategy', () => {
     }
   });
 
-  it('skips non-linear cage (L-shape)', () => {
-    // Cage with A1,B1,A2 — not all in same row or column
+  it('returns null for L-shape cage when required values span multiple houses', () => {
+    // Cage with A1,B1,A2 (L-shape), value 9+. All cells have {1,2,3,4}.
+    // 4 is required (appears in all valid tuples), but candidate cells for 4
+    // Span both rows and columns → no house-confined elimination
     const cages = fillRemainingCells([
       { cells: ['A1', 'B1', 'A2'], operator: Operator.Plus, value: 9 }
     ], 4);
@@ -99,6 +101,33 @@ describe('RequiredCageCandidateStrategy', () => {
     puzzle.getCell('A2').setCandidates([1, 2, 3, 4]);
 
     expect(strategy.tryApply(puzzle)).toBeNull();
+  });
+
+  it('eliminates from L-shape cage when required value candidates are in one house', () => {
+    // Cage with B2,A3,B3 (L-shape), value 20x. Puzzle size 6.
+    // 5 is required, and only B2 and B3 have 5 (A3 does not) → all in column B
+    // → eliminate 5 from rest of column B outside cage
+    const cages = fillRemainingCells([
+      { cells: ['B2', 'A3', 'B3'], operator: Operator.Times, value: 20 }
+    ], 6);
+    const puzzle = createTestPuzzle({ cages, hasOperators: true, puzzleSize: 6 });
+    puzzle.getCell('B2').setCandidates([2, 4, 5]);
+    puzzle.getCell('A3').setCandidates([1, 2, 4]);
+    puzzle.getCell('B3').setCandidates([2, 4, 5]);
+    // Other cells in column B that have 5
+    puzzle.getCell('B1').setCandidates([1, 3, 5]);
+    puzzle.getCell('B4').setCandidates([1, 3, 6]);
+    puzzle.getCell('B5').setCandidates([1, 4, 5]);
+    puzzle.getCell('B6').setCandidates([3, 6]);
+
+    const result = strategy.tryApply(puzzle);
+    expect(result).not.toBeNull();
+    const changes = ensureNonNullable(result).changeGroups.flatMap((g) => g.changes);
+    const cellsLosing5 = changes
+      .filter((c) => c instanceof CandidatesStrikethrough && c.values.includes(5))
+      .map((c) => c.cell.ref)
+      .sort();
+    expect(cellsLosing5).toEqual(['B1', 'B5']);
   });
 
   it('returns null when not all combos require the same value', () => {
