@@ -5,27 +5,8 @@ html, body {
   overflow: hidden;
 }
 
-/* File picker */
-.file-picker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  font-family: 'Segoe UI', sans-serif;
-}
-
-.file-picker h1 {
-  margin-bottom: 0.5rem;
-}
-
-.file-picker p {
-  margin-bottom: 1.5rem;
-  color: #666;
-}
-
 .hidden {
-  display: none !important;
+  display: none;
 }
 
 /* Toolbar */

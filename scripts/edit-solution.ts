@@ -6,7 +6,10 @@
 
 /* eslint-disable no-console -- CLI script output. */
 
-import { readFileSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync
+} from 'node:fs';
 import {
   basename,
   dirname,
@@ -35,7 +38,20 @@ const server = await createServer({
   plugins: [
     {
       configureServer(srv): void {
-        srv.middlewares.use('/api/solution', (_req, res) => {
+        srv.middlewares.use('/api/solution', (req, res) => {
+          if (req.method === 'POST') {
+            const chunks: Buffer[] = [];
+            req.on('data', (chunk: Buffer) => {
+              chunks.push(chunk);
+            });
+            req.on('end', () => {
+              const body = Buffer.concat(chunks).toString('utf-8');
+              writeFileSync(resolvedPath, body, 'utf-8');
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ ok: true }));
+            });
+            return;
+          }
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify({ content: solutionContent, name: solutionName }));
         });

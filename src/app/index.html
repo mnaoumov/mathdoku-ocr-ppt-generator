@@ -7,19 +7,12 @@
   <link rel="stylesheet" href="./style.css"/>
 </head>
 <body>
-  <div id="file-picker" class="file-picker">
-    <h1>Mathdoku Solver</h1>
-    <p>Select a puzzle YAML file to begin.</p>
-    <input type="file" id="yaml-input" accept=".yaml,.yml"/>
-  </div>
-
-  <div id="app-container" class="hidden">
+  <div id="app-container">
     <div class="toolbar">
       <button id="btn-first" title="Go to first slide (Home)">|&lt;</button>
       <button id="btn-last" title="Go to last slide (End)">&gt;|</button>
       <button id="btn-edit" title="Edit cells (E)">Edit</button>
       <button id="btn-undo" title="Undo (Ctrl+Z)">Undo</button>
-      <button id="btn-save-yaml" title="Save solution YAML">Save YAML</button>
       <button id="btn-export" title="Export static presentation">Export</button>
     </div>
     <div class="reveal">

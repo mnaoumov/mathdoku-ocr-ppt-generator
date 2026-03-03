@@ -1,4 +1,3 @@
-import yaml from 'js-yaml';
 import { z } from 'zod';
 
 import type { PuzzleJson } from '../Puzzle.ts';
@@ -6,25 +5,14 @@ import type { PuzzleJson } from '../Puzzle.ts';
 import 'reveal.js/dist/reveal.css';
 import 'reveal.js/dist/theme/white.css';
 
-import {
-  initPuzzleSlides,
-  parsePuzzleJson,
-  Puzzle
-} from '../Puzzle.ts';
-import {
-  buildPuzzleJson,
-  type YamlSpec
-} from '../puzzleYamlParser.ts';
+import { Puzzle } from '../Puzzle.ts';
 import {
   buildSolutionYaml,
   parseSolutionYaml,
   puzzleJsonFromSolution,
   replaySolution
 } from '../SolutionYaml.ts';
-import {
-  createInitialStrategies,
-  createStrategies
-} from '../strategies/createDefaultStrategies.ts';
+import { createStrategies } from '../strategies/createDefaultStrategies.ts';
 import {
   getSolveNotesRect,
   type SolveNotesRect,
@@ -108,6 +96,7 @@ function autoSave(): void {
     slides: currentRenderer.slides,
     state
   });
+  saveYamlToServer();
 }
 
 function extractCellState(puzzle: Puzzle): SavedPuzzleState {
@@ -204,81 +193,26 @@ function onActionComplete(slidesBefore: number): void {
   autoSave();
 }
 
-let currentPuzzleJson: null | PuzzleJson = null;
-
-function initFromPuzzleJson(puzzleJson: PuzzleJson): void {
-  currentPuzzleJson = puzzleJson;
-  currentTitle = puzzleJson.title ?? 'Mathdoku';
-  historyStack = [];
-  currentSolveNotesRect = getSolveNotesRect(puzzleJson.puzzleSize);
-
-  const renderer = new SvgRenderer();
-  renderer.initGrid(
-    puzzleJson.puzzleSize,
-    puzzleJson.cages,
-    puzzleJson.hasOperators ?? true,
-    puzzleJson.title ?? '',
-    puzzleJson.meta ?? ''
-  );
-  currentRenderer = renderer;
-  renderer.pushInitialSlide();
-
-  const puzzle = initPuzzleSlides({
-    cages: puzzleJson.cages,
-    hasOperators: puzzleJson.hasOperators !== false,
-    initialStrategies: createInitialStrategies(),
-    meta: puzzleJson.meta ?? '',
-    puzzleSize: puzzleJson.puzzleSize,
-    renderer,
-    strategies: createStrategies(puzzleJson.puzzleSize),
-    title: puzzleJson.title ?? ''
-  });
-  currentPuzzle = puzzle;
-
-  // Auto-populate manualNotes from slide notes (strategy descriptions on pending, empty on committed)
-  manualNotes = renderer.slides.map((slide) => slide.notes);
-
-  initializeReveal(renderer.slides).then(() => {
-    editPanel.init(puzzle, renderer, { onActionComplete });
-    editPanel.updateCellOverlays();
-    addSolveNotesOverlays(0);
-    autoSave();
-  }).catch((e: unknown) => {
-    console.error('Failed to initialize Reveal.js', e);
-  });
-}
-
-function loadYaml(content: string, name: string): void {
-  const spec = yaml.load(content) as YamlSpec;
-  const puzzleJson = buildPuzzleJson(spec, name);
-  const validated = parsePuzzleJson(puzzleJson);
-  showAppContainer();
-  initFromPuzzleJson(validated);
-}
-
-function setupFileInput(): void {
-  const fileInput = document.getElementById('yaml-input') as HTMLInputElement | null;
-  if (!fileInput) {
+function saveYamlToServer(): void {
+  if (!currentRenderer || !currentPuzzleJson) {
     return;
   }
-  fileInput.addEventListener('change', () => {
-    const file = fileInput.files?.[0];
-    if (!file) {
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (): void => {
-      try {
-        loadYaml(reader.result as string, file.name.replace(/\.yaml$/i, ''));
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e);
-        // eslint-disable-next-line no-alert -- Browser alert for user-facing error
-        alert(`Error loading YAML: ${message}`);
-      }
-    };
-    reader.readAsText(file);
+  const yamlContent = buildSolutionYaml({
+    hasOperators: currentPuzzleJson.hasOperators !== false,
+    manualNotes,
+    puzzleJson: currentPuzzleJson,
+    slides: currentRenderer.slides
+  });
+  fetch('/api/solution', {
+    body: yamlContent,
+    headers: { 'Content-Type': 'text/yaml' },
+    method: 'POST'
+  }).catch((e: unknown) => {
+    console.error('Failed to save YAML to server', e);
   });
 }
+
+let currentPuzzleJson: null | PuzzleJson = null;
 
 function setupKeyboardShortcuts(): void {
   document.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -343,13 +277,6 @@ function setupToolbar(): void {
     });
   }
 
-  const saveYamlBtn = document.getElementById('btn-save-yaml');
-  if (saveYamlBtn) {
-    saveYamlBtn.addEventListener('click', () => {
-      handleSaveYaml();
-    });
-  }
-
   const editBtn = document.getElementById('btn-edit');
   if (editBtn) {
     editBtn.addEventListener('click', () => {
@@ -369,40 +296,10 @@ function setupToolbar(): void {
   }
 }
 
-function showAppContainer(): void {
-  const picker = document.getElementById('file-picker');
-  if (picker) {
-    picker.classList.add('hidden');
-  }
-  const appContainer = document.getElementById('app-container');
-  if (appContainer) {
-    appContainer.classList.remove('hidden');
-  }
-}
-
 const solutionApiResponseSchema = z.object({
   content: z.string(),
   name: z.string()
 });
-
-function handleSaveYaml(): void {
-  if (!currentRenderer || !currentPuzzleJson) {
-    return;
-  }
-  const yamlContent = buildSolutionYaml({
-    hasOperators: currentPuzzleJson.hasOperators !== false,
-    manualNotes,
-    puzzleJson: currentPuzzleJson,
-    slides: currentRenderer.slides
-  });
-  const blob = new Blob([yamlContent], { type: 'application/x-yaml' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${currentTitle}.solution.yaml`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 function initFromSolution(content: string): void {
   const solution = parseSolutionYaml(content);
@@ -443,19 +340,13 @@ function initFromSolution(content: string): void {
   });
 }
 
-async function tryLoadSolutionFromServer(): Promise<boolean> {
-  try {
-    const response = await fetch('/api/solution');
-    if (!response.ok) {
-      return false;
-    }
-    const data = solutionApiResponseSchema.parse(await response.json());
-    showAppContainer();
-    initFromSolution(data.content);
-    return true;
-  } catch {
-    return false;
+async function loadSolutionFromServer(): Promise<void> {
+  const response = await fetch('/api/solution');
+  if (!response.ok) {
+    throw new Error(`Failed to load solution: ${String(response.status)}`);
   }
+  const data = solutionApiResponseSchema.parse(await response.json());
+  initFromSolution(data.content);
 }
 
 // Global error handlers — surface unhandled errors via alert
@@ -474,12 +365,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupKeyboardShortcuts();
   setupToolbar();
 
-  // If started via `npm run edit-solution`, solution is served at /api/solution
-  tryLoadSolutionFromServer().then((loaded) => {
-    if (!loaded) {
-      setupFileInput();
-    }
-  }).catch(() => {
-    setupFileInput();
+  // Solution is served at /api/solution by the edit-solution dev server
+  loadSolutionFromServer().catch((e: unknown) => {
+    console.error('Failed to load solution from server', e);
   });
 });

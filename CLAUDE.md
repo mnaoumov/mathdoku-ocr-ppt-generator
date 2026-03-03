@@ -21,9 +21,8 @@ Interactive browser-based Mathdoku puzzle solver with Reveal.js presentations. T
 
 **Phase 2 — Interactive Solving (browser app):**
 1. `npm run edit-solution -- path/to/solution.yaml` — opens browser app with solution pre-loaded
-2. Or `npm run dev` — manual file picker (for puzzle YAML files)
-3. Replays recorded steps, then user continues solving: click cells to edit, automated strategies run after each action, undo mistakes
-4. "Save YAML" button downloads updated solution YAML; auto-saved to localStorage continuously
+2. Replays recorded steps, then user continues solving: click cells to edit, automated strategies run after each action, undo mistakes
+3. "Save YAML" button downloads updated solution YAML; auto-saved to localStorage continuously
 
 **Phase 3 — Export (static presentation):**
 1. `npm run export-html -- path/to/solution.yaml` — generates HTML from solution YAML (Node.js, no browser)
@@ -51,7 +50,7 @@ Interactive browser-based Mathdoku puzzle solver with Reveal.js presentations. T
 - `src/app/EditPanel.ts` - Click-to-select cell editing panel with operation queue; builds CellChange[] directly (no string parsing)
 - `src/app/ExportService.ts` - Export HTML: `generateHtml()` (pure function) + `exportPresentation()` (browser download). Music from GitHub URL.
 - `src/app/StorageService.ts` - localStorage auto-save/restore (keyed by puzzle title)
-- `src/app/index.html` - App HTML shell (file picker + Reveal.js container + toolbar)
+- `src/app/index.html` - App HTML shell (Reveal.js container + toolbar)
 - `src/app/style.css` - App styles (edit panel, cell overlays, toolbar)
 - `src/app/reveal.js.d.ts` - Type declarations for reveal.js module
 - `ocr/ocr_mathdoku.py` - OCR: uses OpenCV + Tesseract to extract puzzle from screenshot
@@ -137,9 +136,8 @@ Auto-saves after every action. Keyed by puzzle title with storage keys per puzzl
 ### Build
 
 - `npm run init-solution -- path/to/puzzle.yaml` — Create solution YAML (runs init + auto strategies in Node.js)
-- `npm run edit-solution -- path/to/solution.yaml` — Open browser app with pre-loaded solution (preferred workflow)
+- `npm run edit-solution -- path/to/solution.yaml` — Open browser app with pre-loaded solution
 - `npm run export-html -- path/to/solution.yaml` — Generate self-contained HTML from solution YAML (Node.js, no browser)
-- `npm run dev` — Vite dev server with hot reload and manual file picker (config: `vite.config.app.ts`, root: `src/app/`)
 - `npm run build` — Vite production build to `dist/` (via `scripts/build.ts`)
 - Entry point: `src/app/index.html` with `<script type="module" src="./main.ts">`
 - Bundled dependencies: `js-yaml` (YAML parsing), `reveal.js` (presentation framework), `zod` (runtime validation)
@@ -161,7 +159,6 @@ Cage operators use the `Operator` string enum (in `Puzzle.ts`): `Plus = '+'`, `M
 - Create solution: `npm run init-solution -- path/to/puzzle.yaml`
 - Edit solution: `npm run edit-solution -- path/to/solution.yaml`
 - Export HTML: `npm run export-html -- path/to/solution.yaml`
-- Run dev server (file picker): `npm run dev`
 - Build for production: `npm run build`
 - Run OCR: `npm run ocrMathdoku screenshot.png`
 - YAML fixtures go in `tests/fixtures/`
@@ -232,7 +229,7 @@ Slide 0 = initial grid (no step). Step N (1-based) -> slides `2N-1` (pending) an
 
 - `npm test` runs vitest unit tests for Puzzle logic, strategies, parsers, combinatorics, cage constraints
 - `uv run pytest` runs OCR tests. Don't run them unless OCR code changed.
-- For rendering changes, test manually: run `npm run dev`, load a YAML fixture, verify in the browser.
+- For rendering changes, test manually: run `npm run edit-solution -- path/to/solution.yaml`, verify in the browser.
 - `TrackingRenderer` (in `__tests__/puzzleTestHelper.ts`) is the test double for `PuzzleRenderer` — tracks `notesBySlide`, `commandsBySlide`, `slideCount`, `slides`, and has a configurable `isLastSlide` flag for guard testing.
 - `createTestPuzzle()` accepts an optional `renderer` parameter to inject a `TrackingRenderer` the test holds a reference to (avoids `as TrackingRenderer` casts).
 

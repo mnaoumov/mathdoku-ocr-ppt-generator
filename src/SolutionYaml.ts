@@ -33,7 +33,7 @@ export {
   solutionCommandSchema
 } from './solutionCommand.ts';
 
-const SLIDE_PAIR_SIZE = 2;
+export const SLIDE_PAIR_SIZE = 2;
 
 const solutionStepSchema = z.object({
   command: solutionCommandSchema,
@@ -190,13 +190,18 @@ export function replaySolution(params: ReplaySolutionParams): ReplaySolutionResu
     title: puzzleJson.title ?? ''
   });
 
-  // Replay each step (init strategy steps are stored as command objects in the YAML)
+  // Replay each step (init strategy steps are stored as command objects in the YAML).
+  // The last step may contain an error (from a partial init-solution run); catch and continue.
   for (const step of steps) {
     const stepChanges = resolveCommand(puzzle, step.command);
     renderer.setNoteText(step.note);
     renderer.setCommand(step.command);
     puzzle.applyChanges(stepChanges);
-    puzzle.commit();
+    try {
+      puzzle.commit();
+    } catch {
+      break;
+    }
   }
 
   return { manualNotes: buildManualNotes(steps), puzzle, puzzleJson };
