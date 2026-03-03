@@ -19,7 +19,6 @@ import {
   SvgRenderer
 } from '../SvgRenderer.ts';
 import { EditPanel } from './EditPanel.ts';
-import { exportPresentation } from './ExportService.ts';
 import {
   addSlides,
   initializeReveal,
@@ -260,20 +259,6 @@ function setupToolbar(): void {
   if (lastBtn) {
     lastBtn.addEventListener('click', () => {
       navigateToLast();
-    });
-  }
-
-  const exportBtn = document.getElementById('btn-export');
-  if (exportBtn) {
-    exportBtn.addEventListener('click', () => {
-      if (currentRenderer && currentSolveNotesRect) {
-        exportPresentation({
-          manualNotes,
-          slides: currentRenderer.slides,
-          solveNotesRect: currentSolveNotesRect,
-          title: currentTitle
-        });
-      }
     });
   }
 
