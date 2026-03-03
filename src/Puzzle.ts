@@ -247,6 +247,10 @@ export class Cell {
     return this._candidates.has(value);
   }
 
+  public isPeer(other: Cell): boolean {
+    return this.peers.includes(other);
+  }
+
   public removeCandidate(value: number): void {
     this._candidates.delete(value);
   }
@@ -459,11 +463,25 @@ export class Puzzle {
   }
 
   private augmentCandidateChanges(changes: readonly CellChange[]): readonly CellChange[] {
+    // Include pending value changes in peer sets so CandidatesChange items
+    // Account for values being set in the same batch.
+    const pendingValues = new Map<Cell, number>();
+    for (const change of changes) {
+      if (change instanceof ValueChange) {
+        pendingValues.set(change.cell, change.value);
+      }
+    }
+
     const augmented: CellChange[] = [];
     for (const change of changes) {
       if (change instanceof CandidatesChange) {
         const toStrikethrough: number[] = [];
         const peerValueSet = new Set(change.cell.peerValues);
+        for (const [cell, value] of pendingValues) {
+          if (change.cell.isPeer(cell)) {
+            peerValueSet.add(value);
+          }
+        }
         const droppedCandidates: number[] = [];
         if (change.cell.candidateCount > 0) {
           for (const v of change.cell.getCandidates()) {
